@@ -3,6 +3,7 @@ import base64
 import boto3
 import tweepy
 import os
+import io
 
 from botocore.exceptions import ClientError
 
@@ -54,12 +55,18 @@ def lambda_handler(event, context):
         "mentions": others
     }
 
-    return data
+    try:
+        response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], tweet_id + ".json")
+    except ClientError as e:
+        return {
+            'statusCode': 500,
+            body: e
+        }
 
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.loads(response)
-    # }
+    return {
+        'statusCode': 200,
+        'body': data
+    }
 
 def author_data(author_id, user_data):
     for user in user_data:
