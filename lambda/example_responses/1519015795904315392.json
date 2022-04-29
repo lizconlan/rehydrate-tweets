@@ -1,0 +1,53 @@
+{
+  "data": {
+    "id": "1519015795904315392",
+    "text": "This is Benji. He has no time to explain but he needs you to follow him. 12/10 would drop everything immediately https://t.co/3krf4Vjf69",
+    "attachments": {
+      "media_keys": [
+        "3_1519015791965851649"
+      ]
+    },
+    "author_id": "4196983835",
+    "created_at": "2022-04-26T18:09:22.000Z",
+    "entities": {
+      "annotations": [
+        {
+          "start": 8,
+          "end": 12,
+          "probability": 0.961,
+          "type": "Person",
+          "normalized_text": "Benji"
+        }
+      ],
+      "urls": [
+        {
+          "start": 113,
+          "end": 136,
+          "url": "https://t.co/3krf4Vjf69",
+          "expanded_url": "https://twitter.com/dog_rates/status/1519015795904315392/photo/1",
+          "display_url": "pic.twitter.com/3krf4Vjf69"
+        }
+      ]
+    }
+  },
+  "includes": {
+    "media": [
+      {
+        "alt_text": "a small, brown, furry dachshund puppy is walking with purpose on a trail in the woods. he's making direct eye contact with you, and the tips of his ears are flipped up in motion. one of his front paws is raised mid-step because he literally doesn't have time to stop",
+        "media_key": "3_1519015791965851649",
+        "type": "photo",
+        "url": "https://pbs.twimg.com/media/FRSg0JBVUAEhiXF.jpg"
+      }
+    ],
+    "users": [
+      {
+        "username": "dog_rates",
+        "description": "Your Only Source For Professional Dog Ratings Instagram and Facebook ➜ WeRateDogs partnerships@weratedogs.com | nonprofit: @15outof10 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
+        "id": "4196983835",
+        "protected": false,
+        "verified": true,
+        "name": "WeRateDogs®"
+      }
+    ]
+  }
+}

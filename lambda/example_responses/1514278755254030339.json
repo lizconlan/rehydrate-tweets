@@ -1,0 +1,107 @@
+{
+  "data": {
+    "id": "1514278755254030339",
+    "text": "@BlairBraverman Keeshonden aren’t called ‘Smiling Dutchmen’ for nothin’. 🥰 https://t.co/DyssNobupw",
+    "attachments": {
+      "media_keys": [
+        "3_1514278634588147718",
+        "3_1514278634617462789",
+        "3_1514278634680467460",
+        "3_1514278634655305740"
+      ]
+    },
+    "author_id": "911263685255057408",
+    "entities": {
+      "mentions": [
+        {
+          "start": 0,
+          "end": 15,
+          "username": "BlairBraverman",
+          "id": "2271638589"
+        }
+      ],
+      "annotations": [
+        {
+          "start": 16,
+          "end": 25,
+          "probability": 0.4962,
+          "type": "Person",
+          "normalized_text": "Keeshonden"
+        }
+      ],
+      "urls": [
+        {
+          "start": 75,
+          "end": 98,
+          "url": "https://t.co/DyssNobupw",
+          "expanded_url": "https://twitter.com/awolfnamedjohn/status/1514278755254030339/photo/1",
+          "display_url": "pic.twitter.com/DyssNobupw"
+        },
+        {
+          "start": 75,
+          "end": 98,
+          "url": "https://t.co/DyssNobupw",
+          "expanded_url": "https://twitter.com/awolfnamedjohn/status/1514278755254030339/photo/1",
+          "display_url": "pic.twitter.com/DyssNobupw"
+        },
+        {
+          "start": 75,
+          "end": 98,
+          "url": "https://t.co/DyssNobupw",
+          "expanded_url": "https://twitter.com/awolfnamedjohn/status/1514278755254030339/photo/1",
+          "display_url": "pic.twitter.com/DyssNobupw"
+        },
+        {
+          "start": 75,
+          "end": 98,
+          "url": "https://t.co/DyssNobupw",
+          "expanded_url": "https://twitter.com/awolfnamedjohn/status/1514278755254030339/photo/1",
+          "display_url": "pic.twitter.com/DyssNobupw"
+        }
+      ]
+    },
+    "created_at": "2022-04-13T16:26:03.000Z"
+  },
+  "includes": {
+    "media": [
+      {
+        "media_key": "3_1514278634588147718",
+        "type": "photo",
+        "url": "https://pbs.twimg.com/media/FQPMZSmXEAY6vKW.jpg"
+      },
+      {
+        "media_key": "3_1514278634617462789",
+        "type": "photo",
+        "url": "https://pbs.twimg.com/media/FQPMZStWYAUNcuw.jpg"
+      },
+      {
+        "media_key": "3_1514278634680467460",
+        "type": "photo",
+        "url": "https://pbs.twimg.com/media/FQPMZS8XwAQbMcD.jpg"
+      },
+      {
+        "media_key": "3_1514278634655305740",
+        "type": "photo",
+        "url": "https://pbs.twimg.com/media/FQPMZS2X0AwkGv3.jpg"
+      }
+    ],
+    "users": [
+      {
+        "username": "awolfnamedjohn",
+        "description": "Just some guy and his dog. I don’t tweet much, mostly replies. Pronouns: he; him",
+        "id": "911263685255057408",
+        "protected": false,
+        "verified": false,
+        "name": "John & Bucky"
+      },
+      {
+        "username": "BlairBraverman",
+        "description": "Dogsledder. Adventurer. Author of DOGS ON THE TRAIL and WELCOME TO THE GODDAMN ICE CUBE. Novel SMALL GAME forthcoming Nov 1.",
+        "id": "2271638589",
+        "protected": false,
+        "verified": true,
+        "name": "Blair Braverman"
+      }
+    ]
+  }
+}
