@@ -38,8 +38,14 @@ def lambda_handler(event, context):
         "id": tweet.id,
         "text": tweet.text,
         "tweeted_at": str(tweet.created_at),
-        "author_id": tweet.author_id,
-        "author_name": author.username,
+        "author": {
+            "id": tweet.author_id,
+            "username": author.username,
+            "description": author.description,
+            "display_name": author.name,
+            "protected": author.protected,
+            "verified": author.verified
+        },
         "media": media,
         "external_links": links,
         "mentions": others
