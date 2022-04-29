@@ -10,7 +10,7 @@ S3 = boto3.client("s3")
 
 def lambda_handler(event, context):
     object_key = event["object_key"]
-    raw_content = S3.get_object(Bucket=os.environ["source-bucket"], Key=object_key)["Body"].read()
+    raw_content = S3.get_object(Bucket=os.environ["source_bucket"], Key=object_key)["Body"].read()
     tweet_id = json.loads(raw_content)["like"]["tweetId"]
 
     # Connect to Twitter API v2
