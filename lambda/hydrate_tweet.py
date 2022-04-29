@@ -61,7 +61,19 @@ def non_author_list(author_id, user_data):
     if len(user_data) < 2:
         return []
     else:
-        return [el for el in user_data if el.get('id') != author_id]
+        list = []
+        for user in user_data:
+            if user.id == author_id:
+                continue
+            else:
+                list.append(
+                    {
+                        "user_id": user.id,
+                        "user_name": user.username,
+                        "protected": user.protected,
+                        "verified": user.verified
+                    })
+        return list
 
 def url_entities(url_data):
     links = []
