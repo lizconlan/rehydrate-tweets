@@ -22,7 +22,7 @@ def lambda_handler(event, context):
     tweet = response.data
 
     if "media" in response.includes.keys():
-        media = response.includes["media"]
+        media = media_entities(response.includes["media"])
     else:
         media = []
 
@@ -88,3 +88,14 @@ def url_entities(url_data):
                     "title": link["title"]
                 })
     return links
+
+def media_entities(media_data):
+    media = []
+    for item in media_data:
+        media.append({
+            "alt_text": item["alt_text"],
+            "media_key": item["media_key"],
+            "type": item["type"],
+            "url": item["url"]
+        })
+    return media
