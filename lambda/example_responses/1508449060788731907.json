@@ -1,0 +1,35 @@
+{
+  "data": {
+    "author_id": "1536811",
+    "created_at": "2022-03-28T14:20:56.000Z",
+    "text": "New type of ultraviolet light makes indoor air as safe as outdoors: Using far-UVC light in places where people gather indoors could help prevent the next pandemic https://t.co/hQFemrDysf",
+    "id": "1508449060788731907",
+    "entities": {
+      "urls": [
+        {
+          "start": 163,
+          "end": 186,
+          "url": "https://t.co/hQFemrDysf",
+          "expanded_url": "https://www.sciencedaily.com/releases/2022/03/220323101249.htm",
+          "display_url": "sciencedaily.com/releases/2022/…",
+          "status": 200,
+          "title": "New type of ultraviolet light makes indoor air as safe as outdoors: Using far-UVC light in places where people gather indoors could help prevent the next pandemic",
+          "description": "A new type of ultraviolet light that is safe for people destroyed more than 98 percent of airborne microbes in a room within five minutes, a study found.",
+          "unwound_url": "https://www.sciencedaily.com/releases/2022/03/220323101249.htm"
+        }
+      ]
+    }
+  },
+  "includes": {
+    "users": [
+      {
+        "description": "(once upon a time) New York Times technology reporter; Stewart Brand biographer; Writer-in-Residence Stanford Institute for Human Centered AI",
+        "username": "markoff",
+        "verified": true,
+        "name": "John Markoff",
+        "id": "1536811",
+        "protected": false
+      }
+    ]
+  }
+}
