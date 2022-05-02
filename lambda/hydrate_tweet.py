@@ -3,6 +3,7 @@ import base64
 import boto3
 import tweepy
 import os
+import io
 
 from botocore.exceptions import ClientError
 
@@ -10,7 +11,7 @@ S3 = boto3.client("s3")
 
 def lambda_handler(event, context):
     object_key = event["object_key"]
-    raw_content = S3.get_object(Bucket=os.environ["source-bucket"], Key=object_key)["Body"].read()
+    raw_content = S3.get_object(Bucket=os.environ["source_bucket"], Key=object_key)["Body"].read()
     tweet_id = json.loads(raw_content)["like"]["tweetId"]
 
     # Connect to Twitter API v2
@@ -54,12 +55,18 @@ def lambda_handler(event, context):
         "mentions": others
     }
 
-    return data
+    try:
+        response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], tweet_id + ".json")
+    except ClientError as e:
+        return {
+            'statusCode': 500,
+            body: e
+        }
 
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.loads(response)
-    # }
+    return {
+        'statusCode': 200,
+        'body': data
+    }
 
 def author_data(author_id, user_data):
     for user in user_data:
