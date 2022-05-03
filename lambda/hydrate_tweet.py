@@ -41,7 +41,8 @@ def lambda_handler(event, context):
     data = {
         "id": tweet.id,
         "text": tweet.text,
-        "tweeted_at": str(tweet.created_at),
+        "timestamp": str(tweet.created_at),
+        "direct_link": "https://twitter.com/" + author.username + "/status/" + str(tweet.id),
         "author": {
             "id": tweet.author_id,
             "username": author.username,
