@@ -70,6 +70,11 @@ def lambda_handler(event, context):
             body: e
         }
 
+    if "urls" in tweet.entities.keys():
+        save_linked_tweets(links)
+    else:
+        print('No linked tweets found')
+
     # const response = {
     #     "statusCode": 200,
     #     "body": "done!",
@@ -86,6 +91,66 @@ def load_body_data(raw_event):
 
     print('escape it, try again')
     return json.loads(json.dumps(raw_event["body"]))
+
+def save_linked_tweets(link_data):
+    # Connect to Twitter API v2
+    client = tweepy.Client(get_secret()["token"])
+
+    for item in link_data:
+        if item["expanded_url"].startswith("https://twitter.com/"):
+            tweet_id = item["expanded_url"].split("/")[-1]
+
+            response = client.get_tweet(tweet_id,
+                            expansions=["author_id", "entities.mentions.username", "attachments.media_keys"],
+                            tweet_fields=["created_at", "entities"],
+                            user_fields=["username", "verified", "protected", "description", "name"],
+                            media_fields=["alt_text", "url"])
+
+            tweet = response.data
+
+    if "media" in response.includes.keys():
+        media = media_entities(response.includes["media"])
+    else:
+        media = []
+
+    if "urls" in tweet.entities.keys():
+        links = url_entities(tweet.entities["urls"])
+    else:
+        links = []
+
+    author = author_data(tweet.author_id, response.includes["users"])
+    others = non_author_list(tweet.author_id, response.includes["users"])
+
+    data = {
+        "id": tweet.id,
+        "text": tweet.text,
+        "timestamp": str(tweet.created_at),
+        "direct_link": "https://twitter.com/" + author.username + "/status/" + str(tweet.id),
+        "author": {
+            "id": tweet.author_id,
+            "username": author.username,
+            "description": author.description,
+            "display_name": author.name,
+            "protected": author.protected,
+            "verified": author.verified
+        },
+        "media": media,
+        "external_links": links,
+        "mentions": others
+    }
+
+    try:
+        response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], "linked_tweets/" + tweet_id + ".json")
+    except ClientError as e:
+        return {
+            'statusCode': 500,
+            body: e
+        }
+
+    return {
+        'statusCode': 200,
+        'body': data
+    }
 
 def author_data(author_id, user_data):
     for user in user_data:
