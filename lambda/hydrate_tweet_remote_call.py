@@ -6,6 +6,7 @@ import os
 import tweepy
 
 from botocore.exceptions import ClientError
+from json import JSONDecodeError
 
 S3 = boto3.client("s3")
 
@@ -91,7 +92,11 @@ def lambda_handler(event, context):
 def load_body_data(raw_event):
     try:
         print('trying the easy way')
+        print(raw_event["body"])
         return json.loads(raw_event["body"])
+    except JSONDecodeError as e:
+        print(base64.b64decode(raw_event["body"]))
+        return json.loads(base64.b64decode(raw_event["body"]))
     except TypeError as e:
         print('failed with TypeError, calling json.dumps')
 
