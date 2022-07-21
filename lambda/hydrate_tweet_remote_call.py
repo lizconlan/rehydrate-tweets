@@ -35,8 +35,11 @@ def lambda_handler(event, context):
     else:
         media = []
 
-    if "urls" in tweet.entities.keys():
-        links = url_entities(tweet.entities["urls"])
+    if tweet.entities:
+        if "urls" in tweet.entities.keys():
+            links = url_entities(tweet.entities["urls"])
+        else:
+            links = []
     else:
         links = []
 
@@ -70,8 +73,11 @@ def lambda_handler(event, context):
             body: e
         }
 
-    if "urls" in tweet.entities.keys():
-        save_linked_tweets(links)
+    if tweet.entities:
+        if "urls" in tweet.entities.keys():
+            save_linked_tweets(links)
+        else:
+            print('No linked tweets found')
     else:
         print('No linked tweets found')
 
