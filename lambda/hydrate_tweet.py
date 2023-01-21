@@ -1,9 +1,9 @@
-import json
 import base64
 import boto3
-import tweepy
-import os
 import io
+import json
+import os
+import tweepy
 
 from botocore.exceptions import ClientError
 
