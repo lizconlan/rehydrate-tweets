@@ -6,13 +6,19 @@ import os
 import tweepy
 
 from botocore.exceptions import ClientError
+from json import JSONDecodeError
 
 S3 = boto3.client("s3")
 
 def lambda_handler(event, context):
-    object_key = event["object_key"]
-    raw_content = S3.get_object(Bucket=os.environ["source_bucket"], Key=object_key)["Body"].read()
-    tweet_id = json.loads(raw_content)["like"]["tweetId"]
+    event_body = load_body_data(event)
+
+    try:
+        raw_link = event_body["tweet_link"]
+    except TypeError:
+        raw_link = json.loads(event_body)["tweet_link"]
+
+    tweet_id = raw_link.split("/")[-1]
 
     # Connect to Twitter API v2
     client = tweepy.Client(get_secret()["token"])
@@ -57,17 +63,86 @@ def lambda_handler(event, context):
     }
 
     try:
-        response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], tweet_id + ".json")
+        response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], "raw_data/" + tweet_id + ".json")
     except ClientError as e:
+        print('errored with 500 - ' + e)
         return {
             'statusCode': 500,
             body: e
         }
 
-    return {
-        'statusCode': 200,
-        'body': data
-    }
+def load_body_data(raw_event):
+    try:
+        print('trying the easy way')
+        print(raw_event["body"])
+        return json.loads(raw_event["body"])
+    except JSONDecodeError as e:
+        print('ok - base64?')
+        print(base64.b64decode(raw_event["body"]))
+        return json.loads(base64.b64decode(raw_event["body"]))
+    except TypeError as e:
+        print('failed with TypeError, calling json.dumps')
+
+    print('escape it, try again')
+    return json.loads(json.dumps(raw_event["body"]))
+
+def save_linked_tweets(link_data):
+    # Connect to Twitter API v2
+    client = tweepy.Client(get_secret()["token"])
+
+    for item in link_data:
+        if item["expanded_url"].startswith("https://twitter.com/"):
+            tweet_id = item["expanded_url"].split("/")[-1]
+
+            response = client.get_tweet(tweet_id,
+                            expansions=["author_id", "entities.mentions.username", "attachments.media_keys"],
+                            tweet_fields=["created_at", "entities"],
+                            user_fields=["username", "verified", "protected", "description", "name"],
+                            media_fields=["alt_text", "url"])
+
+            tweet = response.data
+
+            if "media" in response.includes.keys():
+                media = media_entities(response.includes["media"])
+            else:
+                media = []
+
+            if tweet.entities:
+                if "urls" in tweet.entities.keys():
+                    links = url_entities(tweet.entities["urls"])
+                else:
+                    links = []
+            else:
+                links = []
+
+            author = author_data(tweet.author_id, response.includes["users"])
+            others = non_author_list(tweet.author_id, response.includes["users"])
+
+            data = {
+                "id": tweet.id,
+                "text": tweet.text,
+                "timestamp": str(tweet.created_at),
+                "direct_link": "https://twitter.com/" + author.username + "/status/" + str(tweet.id),
+                "author": {
+                    "id": tweet.author_id,
+                    "username": author.username,
+                    "description": author.description,
+                    "display_name": author.name,
+                    "protected": author.protected,
+                    "verified": author.verified
+                },
+                "media": media,
+                "external_links": links,
+                "mentions": others
+            }
+
+            try:
+                response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], "linked_tweets/" + tweet_id + ".json")
+            except ClientError as e:
+                return {
+                    'statusCode': 500,
+                    body: e
+                }
 
 def author_data(author_id, user_data):
     for user in user_data:
@@ -98,11 +173,16 @@ def url_entities(url_data):
         if link["display_url"].startswith("pic.twitter.com"):
             continue
         else:
+            if "title" in link.keys():
+                link_title = link["title"]
+            else:
+                link_title = ""
+
             links.append(
                 {
                     "display_url": link["display_url"],
                     "expanded_url": link["expanded_url"],
-                    "title": link["title"]
+                    "title": link_title
                 })
     return links
 
