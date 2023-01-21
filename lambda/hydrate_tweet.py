@@ -40,8 +40,13 @@ def lambda_handler(event, context):
     else:
         media = []
 
-    if "urls" in tweet.entities.keys():
-        links = url_entities(tweet.entities["urls"])
+    if tweet.entities:
+        if "urls" in tweet.entities.keys():
+            links = url_entities(tweet.entities["urls"])
+        else:
+            links = []
+    else:
+        links = []
 
     author = author_data(tweet.author_id, response.includes["users"])
     others = non_author_list(tweet.author_id, response.includes["users"])
@@ -72,6 +77,26 @@ def lambda_handler(event, context):
             'statusCode': 500,
             body: e
         }
+
+    if tweet.entities:
+        if "urls" in tweet.entities.keys():
+            links = url_entities(tweet.entities["urls"])
+            print('am here')
+            if links is not None:
+                save_linked_tweets(links)
+            else:
+                print('No linked tweets found')
+        else:
+            print('No linked tweets found')
+    else:
+        print('No linked tweets found')
+
+    # const response = {
+    #     "statusCode": 200,
+    #     "body": "done!",
+    #     "isBase64Encoded": true
+    # }
+    return { "message": "Done" }
 
 def load_body_data(raw_event):
     try:
