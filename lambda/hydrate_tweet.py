@@ -31,6 +31,10 @@ def lambda_handler(event, context):
 
     tweet = response.data
 
+    if tweet is None:
+        print('Error encountered reading the tweet, aborting')
+        return
+
     if "media" in response.includes.keys():
         media = media_entities(response.includes["media"])
     else:
@@ -38,8 +42,6 @@ def lambda_handler(event, context):
 
     if "urls" in tweet.entities.keys():
         links = url_entities(tweet.entities["urls"])
-    else:
-        links = []
 
     author = author_data(tweet.author_id, response.includes["users"])
     others = non_author_list(tweet.author_id, response.includes["users"])
@@ -101,6 +103,10 @@ def save_linked_tweets(link_data):
                             media_fields=["alt_text", "url"])
 
             tweet = response.data
+
+            if tweet is None:
+                print("Unable to read linked tweet, it may have been deleted or the user could have locked their account")
+                return
 
             if "media" in response.includes.keys():
                 media = media_entities(response.includes["media"])
