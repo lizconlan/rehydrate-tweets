@@ -1,6 +1,12 @@
 # Rehydrate Tweets
 
-A hastily implemented AWS-based toy I made to grab and store my Twitter Favourites before the API goes dark
+A hastily implemented AWS-based toy I made to grab and store my Twitter Favourites before the API goes dark.
+
+When you download your data archive from Twitter, it includes your Likes, but there's not much more than the the basic message text and the status_id in there. The concept was always that if you wanted the original message back - assuming it was still available - you'd have to "rehydrate" it by calling the API with the status_id…
+
+## Application overview
+
+![Diagram showing the basic application outline. The users's request from their commmand line goes via an AWS Gateway (HTTP API) to the Hydrate Tweet Lambda which gets data for an individual tweet and writes a JSON representation of the data to an S3 Bucket. The object creation causes an S3 trigger to fire, launching the Augment Media Lambda which grabs the media connected to the tweet and writes it back to the S3 Bucket](https://github.com/lizconlan/rehydrate-tweets/blob/main/hydrate_tweets.jpg?raw=true)
 
 ## Principal Cast (Data collection)
 
