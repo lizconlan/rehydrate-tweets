@@ -92,3 +92,7 @@ Download that file as well:
 `awslocal s3 cp s3://dev-datalake/raw_data/1519015795904315392.json .`
 
 Then open the file in your favourite text editor, or print it straight to the terminal using `cat 1519015795904315392.json`
+
+## License
+
+This code is available under the MIT License
