@@ -55,7 +55,7 @@ Use the API endpoint in a curl POST command, like this:
 
 ```
 curl -H "Content-Type: application/json" \
-     -XPOST https://1234abcd.execute-api.localhost.localstack.cloud:4566 \
+     -XPOST https://1234abcd.execute-api.localhost.localstack.cloud:4566/tweet/sync \
      -d '{ "tweet_link": "https://twitter.com/dog_rates/status/1519015795904315392" }'
 ```
 
@@ -65,11 +65,23 @@ Right, Hopefully that ended with the message `{"message":"Done"}` in the time it
 
 To see what you got, do this:
 
-`awslocal s3 ls dev-datalake/raw_data/`
+`awslocal s3 ls dev-datalake/liked_media/`
 
-(You should see a file called `1519015795904315392.json`)
+You should see a file called `1519015795904315392-FRSg0JBVUAEhiXF.jpg`
 
 Download that file from your local cloud bucket like this:
+
+`awslocal s3 cp s3://dev-datalake/liked_media/1519015795904315392-FRSg0JBVUAEhiXF.jpg .`
+
+Take a look :)
+
+You should also have a json file with a slightly customised version of the original tweet data:
+
+`awslocal s3 ls dev-datalake/raw_data/`
+
+You should see a file called `1519015795904315392.json`
+
+Download that file as well:
 
 `awslocal s3 cp s3://dev-datalake/raw_data/1519015795904315392.json .`
 
