@@ -27,7 +27,7 @@ def lambda_handler(event, context):
                                 expansions=["author_id", "entities.mentions.username", "attachments.media_keys"],
                                 tweet_fields=["created_at", "entities"],
                                 user_fields=["username", "verified", "protected", "description", "name"],
-                                media_fields=["alt_text", "url"])
+                                media_fields=["alt_text", "url", "variants"])
 
     tweet = response.data
 
