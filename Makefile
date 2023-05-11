@@ -44,7 +44,7 @@ setup:
 		--zip-file fileb://tmp/zips/augment_media.py.zip \
 		--handler augment_media.lambda_handler \
 		--role arn:aws:iam::000000000000:role/lambda-role \
-		--timeout 10 \
+		--timeout 30 \
 		--environment Variables="{bucket=$(BUCKET)}" \
 		--layers $(LAYER_ARN)
 
