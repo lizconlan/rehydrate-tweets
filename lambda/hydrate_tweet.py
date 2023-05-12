@@ -27,7 +27,7 @@ def lambda_handler(event, context):
                                 expansions=["author_id", "entities.mentions.username", "attachments.media_keys"],
                                 tweet_fields=["created_at", "entities"],
                                 user_fields=["username", "verified", "protected", "description", "name"],
-                                media_fields=["alt_text", "url"])
+                                media_fields=["alt_text", "url", "variants"])
 
     tweet = response.data
 
@@ -220,12 +220,37 @@ def url_entities(url_data):
 def media_entities(media_data):
     media = []
     for item in media_data:
-        media.append({
-            "alt_text": item["alt_text"],
-            "media_key": item["media_key"],
-            "type": item["type"],
-            "url": item["url"]
-        })
+        if "variants" in item.keys():
+            variants = item["variants"]
+
+            if len(variants) > 1:
+                filtered = [opt for opt in variants if opt['content_type'] == 'video/mp4']
+                video_url = filtered[0]['url']
+                for option in filtered:
+                    if option['url'].find("640"):
+                        video_url = option['url']
+                        break
+                    if option['url'].find("480"):
+                        video_url = option['url']
+                        break
+                else:
+                    video_url = variants[0]['url']
+            else:
+                video_url = variants[0]['url']
+
+            media.append({
+                "alt_text": item["alt_text"],
+                "media_key": item["media_key"],
+                "type": item["type"],
+                "url": video_url
+            })
+        else:
+            media.append({
+                "alt_text": item["alt_text"],
+                "media_key": item["media_key"],
+                "type": item["type"],
+                "url": item["url"]
+            })
     return media
 
 def get_secret():
