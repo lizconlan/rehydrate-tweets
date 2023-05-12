@@ -9,6 +9,7 @@ ACCESS_TOKEN?='dummy-access-token'
 SECRETS_ARN?='dummy-arn'
 BUCKET=dev-datalake
 setup:
+	# Generate secrets
 	$(eval SECRETS_ARN=$(shell awslocal --endpoint-url=http://localhost:4566 secretsmanager create-secret --name secret_arn --secret-string '{"token":"$(TOKEN)", "client_id":"$(CLIENT_ID)", "access_token":"$(ACCESS_TOKEN)"}' | jq -r .ARN))
 	echo $(SECRETS_ARN)
 

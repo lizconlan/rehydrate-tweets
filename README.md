@@ -50,9 +50,7 @@ Run `make install` to get jq and localstack (using homebrew) and the awscli-loca
 
 1. Set your key in your local shell per the instructions (basically `export LOCALSTACK_API_KEY=<YOUR_API_KEY>`)
 1. Run `localstack start`
-1. In a new terminal window (or tab, I like tabs for this sort of thing) run:<br><br>`make generate_secrets TOKEN=<YOUR_TWITTER_BEARER_TOKEN>`<br><br>This will stash your bearer token in an AWS Secrets Manager in your local cloud
-1. Grab the long string starting with "arn:aws:secretsmanager" that is echoed to the screen
-1. Run: `make setup SECRETS_ARN="<STRING_FROM_THE_PREVIOUS_STEP>"` to create everything else<br><br>(Pro tip, if you're re-running this after tinkering with the code, it's the the very last part, the `-abcdef` that changes so you can just copy-paste that if you're editing a previously run comand)
+1. In a new terminal window (or tab, I like tabs for this sort of thing) run:<br><br>`make setup TOKEN=<YOUR_TWITTER_BEARER_TOKEN>`<br><br>
 1. Right at the end you'll see some output including the address of the newly created endpoint, that looks something like this:<br><br>`"ApiEndpoint": "1234abcd.execute-api.localhost.localstack.cloud:4566"`<br><br>Copy that (just the second bit, not the ApiEndpoint text) for use in the next step
 
 ### Play with your new toy
@@ -92,6 +90,12 @@ Download that file as well:
 `awslocal s3 cp s3://dev-datalake/raw_data/1519015795904315392.json .`
 
 Then open the file in your favourite text editor, or print it straight to the terminal using `cat 1519015795904315392.json`
+
+## Credits
+
+Diagram made using https://app.diagrams.net/
+
+And inspired by the diagram from [LocalStack's Demo app](https://github.com/localstack/localstack-demo#localstack-demo)
 
 ## License
 
