@@ -65,7 +65,7 @@ curl -H "Content-Type: application/json" \
      -d '{ "tweet_link": "https://twitter.com/dog_rates/status/1519015795904315392" }'
 ```
 
-(You can also use a shortform version of the JSON body like this: `{ "tweet_link": "1519015795904315392" }`, but seeing which account the tweet was posted from - and having the option of pasting the url into a web browser first - is mroe reasssuring for an example. It's more fun if you don't do that though!)
+(You can also use a shortform version of the JSON body like this: `{ "tweet_link": "1519015795904315392" }`, but seeing which account the tweet was posted from - and having the option of pasting the url into a web browser first - is more reasssuring for an example. It's more fun if you don't do that though!)
 
 Right, Hopefully that ended with the message `{"message":"Done"}` in the time it took for you to read that (it's calling an actual API over the internet, it might need a few seconds)
 

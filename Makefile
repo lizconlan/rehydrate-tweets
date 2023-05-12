@@ -4,20 +4,14 @@ install:
 
 .ONESHELL:
 TOKEN?='dummy-token'
-generate_secrets:
-	# pass in Twitter credentials via
-	# make setup TOKEN=value CLIENT_ID=value ACCESS_TOKEN=value
-
-	# SecretsManager secrets for Twitter credentials
-	$(eval SECRETS_ARN=$(shell awslocal --endpoint-url=http://localhost:4566 secretsmanager create-secret --name secret_arn --secret-string '{"token":"$(TOKEN)", "client_id":"$(CLIENT_ID)", "access_token":"$(ACCESS_TOKEN)"}' | jq -r .ARN))
-	echo $(SECRETS_ARN)
-
-.ONESHELL:
 CLIENT_ID?='dummy-client-id'
 ACCESS_TOKEN?='dummy-access-token'
 SECRETS_ARN?='dummy-arn'
 BUCKET=dev-datalake
 setup:
+	$(eval SECRETS_ARN=$(shell awslocal --endpoint-url=http://localhost:4566 secretsmanager create-secret --name secret_arn --secret-string '{"token":"$(TOKEN)", "client_id":"$(CLIENT_ID)", "access_token":"$(ACCESS_TOKEN)"}' | jq -r .ARN))
+	echo $(SECRETS_ARN)
+
 	# Create S3 bucket
 	awslocal s3 mb s3://$(BUCKET)
 
@@ -27,7 +21,6 @@ setup:
 
 	# Make a fresh zip file for the tweet hydrator
 	cd lambda; zip ../tmp/zips/hydrate_tweet.py.zip hydrate_tweet.py
-	sleep 4
 
 	# Create hydrate Lambda function
 	awslocal lambda create-function \
@@ -42,7 +35,6 @@ setup:
 
 	# Make a fresh zip file for the media augmenter
 	cd lambda; zip ../tmp/zips/augment_media.py.zip augment_media.py
-	sleep 4
 
 	# Create augment_media Lambda function
 	awslocal lambda create-function \
