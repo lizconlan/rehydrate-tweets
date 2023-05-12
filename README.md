@@ -4,6 +4,10 @@ A hastily implemented AWS-based toy I made to grab and store my Twitter Favourit
 
 When you download your data archive from Twitter, it includes your Likes, but there's not much more than the the basic message text and the status_id in there. The concept was always that if you wanted the original message back - assuming it was still available - you'd have to "rehydrate" it by calling the API with the status_id…
 
+### Disclaimer
+
+The code is a little scruffier - and has 100% fewer tests - than I'd ideally like, partly because it started out as toy, but mostly because I thought I had about a week to get everything finished off, working and all the data collected. The data collection alone took several days. So this repo is me trying to document and rearrange (and hopefully improve) the jumble of stuff that ended up in my AWS account.
+
 ## Application overview
 
 ![Diagram showing the basic application outline. The users's request from their commmand line goes via an AWS Gateway (HTTP API) to the Hydrate Tweet Lambda which gets data for an individual tweet and writes a JSON representation of the data to an S3 Bucket. The object creation causes an S3 trigger to fire, launching the Augment Media Lambda which grabs the media connected to the tweet and writes it back to the S3 Bucket](https://github.com/lizconlan/rehydrate-tweets/blob/main/hydrate_tweets.jpg?raw=true)
@@ -11,7 +15,7 @@ When you download your data archive from Twitter, it includes your Likes, but th
 ## Principal Cast (Data collection)
 
 * Docker
-* Some S3 buckets
+* An S3 bucket
 * Event notifications on the S3 bucket
 * Secrets Manager
 * Cloudwatch logging
@@ -19,7 +23,7 @@ When you download your data archive from Twitter, it includes your Likes, but th
 * A Lambda layer to import the tweepy (Twitter client) library
 * API Gateway v2 (HTTP flavour)
 
-(The last 2 necessitate a Localstack Pro key. I started out using a v1 REST API locally then realised I needed Pro anyway and switched to something closer to my actual implementation)
+(The last 2 necessitate a Localstack Pro key. I started out using a v1 REST API locally then realised I needed Pro anyway to import Tweepy and Requests and switched to the v2 Gateway as that's closer to my actual implementation)
 
 ## Supporting crew (Data loading / analysis)
 
@@ -65,7 +69,7 @@ curl -H "Content-Type: application/json" \
 
 (You can also use a shortform version of the JSON body like this: `{ "tweet_link": "1519015795904315392" }`, but seeing which account the tweet was posted from - and having the option of pasting the url into a web browser first - is more reasssuring for an example. It's more fun if you don't do that though!)
 
-Right, Hopefully that ended with the message `{"message":"Done"}` in the time it took for you to read that (it's calling an actual API over the internet, it might need a few seconds)
+Right, Hopefully that ended with the message `{"message":"Done"}` in the time it took for you to read that (it's calling an actual API over the internet, it might need a few seconds; plus a few more if you're downloading multiple photos or a video file!)
 
 To see what you got, do this:
 
