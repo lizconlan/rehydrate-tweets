@@ -6,7 +6,7 @@ When you download your data archive from Twitter, it includes your Likes, but th
 
 ### Disclaimer
 
-The code is a little scruffier - and has 100% fewer tests - than I'd ideally like, partly because it started out as toy, but mostly because I thought I had about a week to get everything finished off, working and all the data collected. The data collection alone took several days. So this repo is me trying to document and rearrange (and hopefully improve) the jumble of stuff that ended up in my AWS account.
+The code is a little scruffier - and has 100% fewer tests - than I'd ideally like, partly because it started out as toy, but mostly because I thought I had about a week to get everything finished off, working and all the data collected. (The data collection alone took several days.) So there are mistakes and regrets as I glued together old code snipppets - that didn't always do what I half remembered (see "raw_data" actually containing edited highlights 🙄) - in a last minute rush. This repo is me trying to document and rearrange (and hopefully improve) the jumble of stuff that ended up in my AWS account.
 
 ## Application overview
 
@@ -16,7 +16,7 @@ The code is a little scruffier - and has 100% fewer tests - than I'd ideally lik
 
 * Docker
 * An S3 bucket
-* Event notifications on the S3 bucket
+* Event notifications configured on the S3 bucket
 * Secrets Manager
 * Cloudwatch logging
 * An untidy pile of Python-based Lambda functions
