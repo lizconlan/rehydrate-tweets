@@ -4,6 +4,7 @@ import io
 import json
 import os
 import tweepy
+import requests
 
 from botocore.exceptions import ClientError
 from json import JSONDecodeError
@@ -26,7 +27,7 @@ def lambda_handler(event, context):
     response = client.get_tweet(tweet_id,
                                 expansions=["author_id", "entities.mentions.username", "attachments.media_keys"],
                                 tweet_fields=["created_at", "entities"],
-                                user_fields=["username", "verified", "protected", "description", "name"],
+                                user_fields=["username", "verified", "protected", "description", "name", "profile_image_url"],
                                 media_fields=["alt_text", "url", "variants"])
 
     tweet = response.data
@@ -51,6 +52,8 @@ def lambda_handler(event, context):
     author = author_data(tweet.author_id, response.includes["users"])
     others = non_author_list(tweet.author_id, response.includes["users"])
 
+    profile_image = stash_profile_image(tweet.author_id, author.profile_image_url)
+
     data = {
         "id": tweet.id,
         "text": tweet.text,
@@ -62,6 +65,8 @@ def lambda_handler(event, context):
             "description": author.description,
             "display_name": author.name,
             "protected": author.protected,
+            "profile_image_url": author.profile_image_url,
+            "profile_image_s3": profile_image,
             "verified": author.verified
         },
         "media": media,
@@ -197,6 +202,20 @@ def non_author_list(author_id, user_data):
                         "verified": user.verified
                     })
         return list
+
+def stash_profile_image(author_id, profile_image_url):
+    image_file_name = profile_image_url.split("/")[-1]
+    object_key = "profile_images/" + str(author_id) + "-" + image_file_name
+
+    try:
+        S3.head_object(Bucket=os.environ["target_bucket"], Key=object_key)
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            file = requests.get(profile_image_url)
+            S3.upload_fileobj(io.BytesIO(file.content), os.environ["target_bucket"], object_key)
+        else:
+            raise()
+    return object_key
 
 def url_entities(url_data):
     links = []
