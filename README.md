@@ -73,27 +73,19 @@ Right, Hopefully that ended with the message `{"message":"Done"}` in the time it
 
 To see what you got, do this:
 
-`awslocal s3 ls dev-datalake/liked_media/`
+`awslocal s3 ls dev-datalake/`
 
-You should see a file called `1519015795904315392-FRSg0JBVUAEhiXF.jpg`
+This should show you the different prefixes (folders) inside the S3 bucket. If have fewer than 3 prefixes listed, wait a moment and try again in case the async Lambda functions are still running.
 
-Download that file from your local cloud bucket like this:
-
-`awslocal s3 cp s3://dev-datalake/liked_media/1519015795904315392-FRSg0JBVUAEhiXF.jpg .`
-
-Take a look :)
-
-You should also have a json file with a slightly customised version of the original tweet data:
-
-`awslocal s3 ls dev-datalake/raw_data/`
-
-You should see a file called `1519015795904315392.json`
-
-Download that file as well:
+You can also "download" files from the local cloud bucket to your computer using the cp command, like this:
 
 `awslocal s3 cp s3://dev-datalake/raw_data/1519015795904315392.json .`
 
-Then open the file in your favourite text editor, or print it straight to the terminal using `cat 1519015795904315392.json`
+Or you can try the tweet preview feature to see an HTML version of the tweet constructed from the data captured by the API call (requires npm):
+
+`make launch-tweet-viewer`
+
+This will launch a lightweight local web server and load tweet_id 1519015795904315392 by default. Provided you have download its files, you can see a different tweet by changing the tweet_id parameter value in the browser, or specifiy a different id to start with by calling the launcher with `make launch-tweet-viewer TWEET_ID=<YOUR_CHOSEN_ID>`
 
 ## Credits
 
