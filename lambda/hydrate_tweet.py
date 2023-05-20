@@ -37,7 +37,7 @@ def lambda_handler(event, context):
         return
 
     if "media" in response.includes.keys():
-        media = media_entities(response.includes["media"])
+        media = media_entities(response.includes["media"], tweet.id)
     else:
         media = []
 
@@ -139,7 +139,7 @@ def save_linked_tweets(link_data):
                 return
 
             if "media" in response.includes.keys():
-                media = media_entities(response.includes["media"])
+                media = media_entities(response.includes["media"], tweet.id)
             else:
                 media = []
 
@@ -236,7 +236,7 @@ def url_entities(url_data):
                 })
     return links
 
-def media_entities(media_data):
+def media_entities(media_data, tweet_id):
     media = []
     for item in media_data:
         if "variants" in item.keys():
@@ -261,14 +261,16 @@ def media_entities(media_data):
                 "alt_text": item["alt_text"],
                 "media_key": item["media_key"],
                 "type": item["type"],
-                "url": video_url
+                "url": video_url,
+                "s3_url": str(tweet_id) + "-" + video_url.split('/')[-1]
             })
         else:
             media.append({
                 "alt_text": item["alt_text"],
                 "media_key": item["media_key"],
                 "type": item["type"],
-                "url": item["url"]
+                "url": item["url"],
+                "s3_url": str(tweet_id) + "-" + item["url"].split('/')[-1]
             })
     return media
 

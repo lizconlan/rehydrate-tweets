@@ -3,6 +3,33 @@ install:
 	pip3 install awscli-local
 
 .ONESHELL:
+TWEET_ID?=1519015795904315392
+BUCKET=dev-datalake
+launch-tweet-viewer:
+	# Download the tweet's json data file
+	@awslocal s3 cp s3://${BUCKET}/raw_data/${TWEET_ID}.json viewer/downloads/
+
+	@echo ""
+	# Open the data file and read out the author's user ID
+	$(eval AUTHOR_ID=$(shell jq -r '.author.id' viewer/downloads/${TWEET_ID}.json))
+
+	@echo ${AUTHOR_ID}
+
+	@echo ""
+	# Download all associated media (photos, video)
+	@awslocal s3 ls "${BUCKET}/liked_media/${TWEET_ID}-" --recursive | while read -r line; do \
+		file=$$(echo "$$line" | awk '{print $$4}'); \
+		awslocal s3 cp "s3://${BUCKET}/$${file}" viewer/downloads/ ; \
+	done
+
+	@echo ""
+	# Download the profile image
+	$(eval PROFILE_PIC=$(shell awslocal s3 ls ${BUCKET}/profile_images/${AUTHOR_ID}- | awk '{print $$4}'))
+	@awslocal s3 cp "s3://${BUCKET}/profile_images/${PROFILE_PIC}" viewer/downloads/profile_images/
+
+	npx http-server -o viewer/tweet.html?tweet_id=$(TWEET_ID)
+
+.ONESHELL:
 TOKEN?='dummy-token'
 CLIENT_ID?='dummy-client-id'
 ACCESS_TOKEN?='dummy-access-token'

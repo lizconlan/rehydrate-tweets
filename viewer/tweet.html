@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Tweet Test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.3.0/mustache.min.js"></script>
+  <style type="text/css">
+    #tweet_content { width: 580px; font-family: Helvetica, sans-serif; }
+    .js-tweet-image-container,
+    .js-action-profile-avatar {
+      border-radius:16px; overflow: hidden
+    }
+    .fullname { display: inline-block; width: 100% }
+    img { overflow-clip-margin: content-box;}
+  </style>
+</head>
+<body onload="getJsonData()">
+  <div id="tweet_content"></div>
+
+  <script>
+    const getParam = function getUrlParameter(sParam) {
+      let sPageURL = window.location.search.substring(1),
+                     sURLVariables = sPageURL.split('&'),
+                     sParameterName,
+                     i;
+
+      for (i = 0; i < sURLVariables.length; i++) {
+        sParameterName = sURLVariables[i].split('=');
+
+        if (sParameterName[0] === sParam) {
+          return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+        }
+      }
+    };
+
+    let getJsonData = function loadData() {
+      let data_id = getParam("tweet_id");
+      // alert(data_id);
+      fetch('http://127.0.0.1:8080/viewer/downloads/' + data_id + '.json')
+        .then(res => res.blob())
+        .then(blob => blob.text())
+        .then(data =>  {
+          // alert(data);
+          fetch('http://127.0.0.1:8080/viewer/template.html')
+            .then(res2 => res2.blob())
+            .then(blob2 => blob2.text())
+            .then(template => {
+              let generated_html = Mustache.render(template, JSON.parse(data));
+              document.getElementById("tweet_content").innerHTML = generated_html;
+          });
+      });
+    }
+  </script>
+</body>
