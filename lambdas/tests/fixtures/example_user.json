@@ -1,0 +1,9 @@
+{
+  "id": 9876543210,
+  "name": "Twitter",
+  "username": "Twitter",
+  "description": "What's happening?",
+  "protected": "False",
+  "verified": "True",
+  "profile_image_url": "https://pbs.twimg.com/profile_images/1234567890123456789/abcdefg_normal.jpg"
+}

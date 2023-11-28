@@ -51,7 +51,6 @@ def lambda_handler(event, context):
 
     author = author_data(tweet.author_id, response.includes["users"])
     others = non_author_list(tweet.author_id, response.includes["users"])
-
     profile_image = stash_profile_image(tweet.author_id, author.profile_image_url)
 
     data = {
@@ -75,18 +74,17 @@ def lambda_handler(event, context):
     }
 
     try:
-        response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], "raw_data/" + tweet_id + ".json")
+        response = save_tweet_data(data, os.environ["target_bucket"], tweet_id)
     except ClientError as e:
         print('errored with 500 - ' + e)
         return {
             'statusCode': 500,
-            body: e
+            'body': e
         }
 
     if tweet.entities:
         if "urls" in tweet.entities.keys():
             links = url_entities(tweet.entities["urls"])
-            print('am here')
             if links is not None:
                 save_linked_tweets(links)
             else:
@@ -177,7 +175,7 @@ def save_linked_tweets(link_data):
             except ClientError as e:
                 return {
                     'statusCode': 500,
-                    body: e
+                    'body': e
                 }
 
 def author_data(author_id, user_data):
@@ -273,6 +271,9 @@ def media_entities(media_data, tweet_id):
                 "s3_url": str(tweet_id) + "-" + item["url"].split('/')[-1]
             })
     return media
+
+def save_tweet_data(data, bucket_name, tweet_id):
+    S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), bucket_name, "raw_data/" + tweet_id + ".json")
 
 def get_secret():
     secret_name = os.environ["secret_arn"]
