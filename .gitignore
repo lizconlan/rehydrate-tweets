@@ -1,4 +1,7 @@
 .vscode
 **/.DS_Store
+**/__pycache__
 tmp/zips/*.zip
+tmp
 viewer/downloads/
+volume
