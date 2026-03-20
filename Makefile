@@ -5,6 +5,9 @@ install:
 .ONESHELL:
 TWEET_ID?=1519015795904315392
 BUCKET=dev-datalake
+refresh-viewer-data:
+	python3 viewer/build_viewer_data.py
+
 launch-tweet-viewer:
 	# Download the tweet's json data file
 	@awslocal s3 cp s3://${BUCKET}/raw_data/${TWEET_ID}.json viewer/downloads/
@@ -27,7 +30,11 @@ launch-tweet-viewer:
 	$(eval PROFILE_PIC=$(shell awslocal s3 ls ${BUCKET}/profile_images/${AUTHOR_ID}- | awk '{print $$4}'))
 	@awslocal s3 cp "s3://${BUCKET}/profile_images/${PROFILE_PIC}" viewer/downloads/profile_images/
 
+	python3 viewer/build_viewer_data.py
 	npx http-server -o viewer/tweet.html?tweet_id=$(TWEET_ID)
+
+launch-archive-viewer: refresh-viewer-data
+	npx http-server -o viewer/index.html
 
 .ONESHELL:
 TOKEN?='dummy-token'
