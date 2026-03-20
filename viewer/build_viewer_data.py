@@ -11,6 +11,10 @@ DOWNLOADS_DIR = VIEWER_DIR / "downloads"
 MANIFEST_PATH = DOWNLOADS_DIR / "index.json"
 LIKED_MEDIA_DIR = DOWNLOADS_DIR / "liked_media"
 PROFILE_IMAGES_DIR = DOWNLOADS_DIR / "profile_images"
+MANAGED_DIR = DOWNLOADS_DIR / "managed"
+MANAGED_RAW_DATA_DIR = MANAGED_DIR / "raw_data"
+MANAGED_LIKED_MEDIA_DIR = MANAGED_DIR / "liked_media"
+MANAGED_PROFILE_IMAGES_DIR = MANAGED_DIR / "profile_images"
 
 IGNORED_DIRS = {
     ".git",
@@ -43,7 +47,7 @@ def tweet_score(tweet, source_path):
     media = tweet.get("media") or []
     author = tweet.get("author") or {}
     return (
-        1 if source_path.parent == DOWNLOADS_DIR else 0,
+        0 if source_path.parent == DOWNLOADS_DIR else 1,
         sum(1 for item in media if item.get("s3_url")),
         1 if author.get("profile_image_s3") else 0,
         len(media),
@@ -87,43 +91,50 @@ def media_filename_from_url(url):
 def infer_profile_image_s3(author):
     author_id = str(author.get("id", "")).strip()
     if not author_id:
-      return ""
+        return ""
 
-    existing = sorted(PROFILE_IMAGES_DIR.glob(f"{author_id}-*"))
-    if existing:
-        return f"profile_images/{existing[0].name}"
+    for directory, prefix in (
+        (PROFILE_IMAGES_DIR, "profile_images"),
+        (MANAGED_PROFILE_IMAGES_DIR, "managed/profile_images"),
+    ):
+        existing = sorted(directory.glob(f"{author_id}-*"))
+        if existing:
+            return f"{prefix}/{existing[0].name}"
 
     filename = media_filename_from_url(author.get("profile_image_url", ""))
     if not filename:
         return ""
 
-    return f"profile_images/{author_id}-{filename}"
+    return f"managed/profile_images/{author_id}-{filename}"
 
 
 def infer_media_s3_url(tweet_id, media_item):
-    existing = ""
     url = media_item.get("url", "")
     filename = media_filename_from_url(url)
     media_key = str(media_item.get("media_key", "")).replace("/", "-")
 
+    for directory, prefix in (
+        (LIKED_MEDIA_DIR, "liked_media"),
+        (MANAGED_LIKED_MEDIA_DIR, "managed/liked_media"),
+    ):
+        if filename:
+            exact = directory / f"{tweet_id}-{filename}"
+            if exact.exists():
+                return f"{prefix}/{exact.name}"
+
+            fallback_match = sorted(directory.glob(f"{tweet_id}-*{Path(filename).suffix}"))
+            if fallback_match:
+                return f"{prefix}/{fallback_match[0].name}"
+
+        if media_key:
+            key_match = sorted(directory.glob(f"*{media_key}*"))
+            if key_match:
+                return f"{prefix}/{key_match[0].name}"
+
     if filename:
-        exact = LIKED_MEDIA_DIR / f"{tweet_id}-{filename}"
-        if exact.exists():
-            return f"liked_media/{exact.name}"
+        return f"managed/liked_media/{tweet_id}-{filename}"
 
-        fallback_match = sorted(LIKED_MEDIA_DIR.glob(f"{tweet_id}-*{Path(filename).suffix}"))
-        if fallback_match:
-            return f"liked_media/{fallback_match[0].name}"
-
-    if media_key:
-        key_match = sorted(LIKED_MEDIA_DIR.glob(f"*{media_key}*"))
-        if key_match:
-            return f"liked_media/{key_match[0].name}"
-
-    if filename:
-        return f"liked_media/{tweet_id}-{filename}"
-
-    return existing
+    return ""
 
 
 def normalize_tweet(tweet):
