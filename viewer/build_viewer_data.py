@@ -56,10 +56,13 @@ def tweet_score(tweet, source_path):
     )
 
 
-def summarize_tweet(tweet):
+def summarize_tweet(tweet, source_path):
     media = tweet.get("media") or []
     author = tweet.get("author") or {}
     text = " ".join(str(tweet.get("text", "")).split())
+    source_kind = tweet.get("_viewer_source_kind")
+    if not source_kind:
+        source_kind = "managed" if MANAGED_DIR in source_path.parents else "cache"
 
     return {
         "id": str(tweet["id"]),
@@ -72,10 +75,13 @@ def summarize_tweet(tweet):
             "username": author.get("username", ""),
             "display_name": author.get("display_name", author.get("username", "")),
             "verified": bool(author.get("verified", False)),
+            "profile_image_s3": author.get("profile_image_s3", ""),
+            "profile_image_url": author.get("profile_image_url", ""),
         },
         "media_count": len(media),
         "has_video": any(item.get("type") == "video" for item in media),
         "json_path": f"downloads/{tweet['id']}.json",
+        "source_kind": source_kind,
     }
 
 
@@ -197,9 +203,10 @@ def build_manifest():
     for tweet_id, item in tweets.items():
         destination = DOWNLOADS_DIR / f"{tweet_id}.json"
         normalized_tweet = normalize_tweet(item["tweet"])
+        normalized_tweet["_viewer_source_kind"] = "managed" if MANAGED_DIR in item["path"].parents else "cache"
         destination.write_text(json.dumps(normalized_tweet, indent=2))
 
-        manifest.append(summarize_tweet(normalized_tweet))
+        manifest.append(summarize_tweet(normalized_tweet, item["path"]))
 
     manifest.sort(key=lambda tweet: (tweet["timestamp"], tweet["id"]), reverse=True)
     MANIFEST_PATH.write_text(json.dumps({"tweets": manifest}, indent=2))

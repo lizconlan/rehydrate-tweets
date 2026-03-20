@@ -2,7 +2,18 @@ const ArchiveViewer = (() => {
   const state = {
     manifest: [],
     selectedId: null,
+    query: "",
+    activeFilter: "all",
+    account: "",
+    dateFrom: "",
+    dateTo: "",
   };
+  const FILTERS = [
+    { id: "all", label: "All", predicate: () => true },
+    { id: "media", label: "Media", predicate: (tweet) => (tweet.media_count || 0) > 0 },
+    { id: "video", label: "Video", predicate: (tweet) => Boolean(tweet.has_video) },
+    { id: "managed", label: "Imported", predicate: (tweet) => tweet.source_kind === "managed" },
+  ];
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -76,6 +87,159 @@ const ArchiveViewer = (() => {
       dateStyle: "medium",
       timeStyle: "short",
     });
+  }
+
+  function formatShortDate(timestamp) {
+    if (!timestamp) {
+      return "";
+    }
+
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) {
+      return timestamp;
+    }
+
+    return parsed.toLocaleDateString(undefined, {
+      dateStyle: "medium",
+    });
+  }
+
+  function currentFilter() {
+    return FILTERS.find((filter) => filter.id === state.activeFilter) || FILTERS[0];
+  }
+
+  function filteredTweets() {
+    const normalized = state.query.trim().toLowerCase();
+    const filter = currentFilter();
+
+    return state.manifest.filter((tweet) => {
+      if (!filter.predicate(tweet)) {
+        return false;
+      }
+
+      if (!normalized) {
+        // continue to structured filters
+      } else {
+        const haystack = [
+          tweet.id,
+          tweet.text,
+          tweet.author?.username,
+          tweet.author?.display_name,
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        if (!haystack.includes(normalized)) {
+          return false;
+        }
+      }
+
+      if (state.account && tweet.author?.username !== state.account) {
+        return false;
+      }
+
+      const tweetDate = (tweet.timestamp || "").slice(0, 10);
+      if (state.dateFrom && tweetDate && tweetDate < state.dateFrom) {
+        return false;
+      }
+      if (state.dateTo && tweetDate && tweetDate > state.dateTo) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  function populateAccountFilter() {
+    const select = document.getElementById("account-filter");
+    if (!select) {
+      return;
+    }
+
+    const accounts = [...new Set(
+      state.manifest
+        .map((tweet) => tweet.author?.username)
+        .filter(Boolean),
+    )].sort((a, b) => a.localeCompare(b));
+
+    select.innerHTML = [
+      '<option value="">All accounts</option>',
+      ...accounts.map((account) => `<option value="${escapeHtml(account)}">@${escapeHtml(account)}</option>`),
+    ].join("");
+
+    select.value = state.account;
+  }
+
+  function renderArchiveSummary() {
+    const summary = document.getElementById("archive-summary");
+    if (!summary) {
+      return;
+    }
+
+    const total = state.manifest.length;
+    const withMedia = state.manifest.filter((tweet) => (tweet.media_count || 0) > 0).length;
+    const withVideo = state.manifest.filter((tweet) => tweet.has_video).length;
+    const imported = state.manifest.filter((tweet) => tweet.source_kind === "managed").length;
+
+    summary.innerHTML = `
+      <div class="summary-card">
+        <span class="summary-value">${total}</span>
+        <span class="summary-label">Loaded</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-value">${withMedia}</span>
+        <span class="summary-label">With media</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-value">${withVideo}</span>
+        <span class="summary-label">Video</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-value">${imported}</span>
+        <span class="summary-label">Imported</span>
+      </div>
+    `;
+  }
+
+  function renderFilterChips() {
+    const host = document.getElementById("filter-chips");
+    if (!host) {
+      return;
+    }
+
+    host.innerHTML = FILTERS.map((filter) => `
+      <button
+        class="filter-chip ${filter.id === state.activeFilter ? "is-active" : ""}"
+        data-filter-id="${filter.id}"
+        type="button"
+      >
+        ${escapeHtml(filter.label)}
+      </button>
+    `).join("");
+
+    host.querySelectorAll(".filter-chip").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.activeFilter = button.dataset.filterId;
+        applyFilters();
+      });
+    });
+  }
+
+  function renderResultsMeta(tweets) {
+    const meta = document.getElementById("results-meta");
+    if (!meta) {
+      return;
+    }
+
+    const filterLabel = currentFilter().label;
+    const selectionDate = tweets[0] ? formatShortDate(tweets[0].timestamp) : "";
+    const accountLabel = state.account ? ` · @${state.account}` : "";
+    const dateLabel = state.dateFrom || state.dateTo
+      ? ` · ${state.dateFrom || "start"} to ${state.dateTo || "now"}`
+      : "";
+    meta.textContent = tweets.length
+      ? `${tweets.length} ${filterLabel.toLowerCase()} result${tweets.length === 1 ? "" : "s"}${accountLabel}${dateLabel}${selectionDate ? ` · newest ${selectionDate}` : ""}`
+      : "No tweets match the current filters";
   }
 
   function renderMedia(media = []) {
@@ -310,12 +474,32 @@ const ArchiveViewer = (() => {
     list.innerHTML = tweets
       .map((tweet) => {
         const byline = tweet.author?.display_name || tweet.author?.username || "Unknown author";
+        const avatarCandidates = sourceCandidates(tweet.author || {}, "avatar");
+        const avatarSrc = avatarCandidates[0];
+        const badges = [];
+        if (tweet.source_kind === "managed") {
+          badges.push('<span class="tweet-list-badge">Imported</span>');
+        }
+        if (tweet.has_video) {
+          badges.push('<span class="tweet-list-badge">Video</span>');
+        } else if ((tweet.media_count || 0) > 0) {
+          badges.push(`<span class="tweet-list-badge">${tweet.media_count} media</span>`);
+        }
+
         return `
           <li>
             <button class="tweet-list-item" data-tweet-id="${escapeHtml(tweet.id)}" type="button">
-              <span class="tweet-list-title">${escapeHtml(byline)}</span>
-              <span class="tweet-list-meta">@${escapeHtml(tweet.author?.username || "unknown")} · ${escapeHtml(formatTimestamp(tweet.timestamp))}</span>
-              <span class="tweet-list-preview">${escapeHtml(tweet.text_preview || tweet.text || "")}</span>
+              <span class="tweet-list-row">
+                ${avatarSrc ? `<img class="tweet-list-avatar" src="${escapeHtml(avatarSrc)}" alt="" data-fallbacks="${encodedFallbacks(avatarCandidates)}">` : '<span class="tweet-list-avatar tweet-list-avatar--placeholder"></span>'}
+                <span class="tweet-list-content">
+                  <span class="tweet-list-title-row">
+                    <span class="tweet-list-title">${escapeHtml(byline)}</span>
+                    <span class="tweet-list-badges">${badges.join("")}</span>
+                  </span>
+                  <span class="tweet-list-meta">@${escapeHtml(tweet.author?.username || "unknown")} · ${escapeHtml(formatTimestamp(tweet.timestamp))}</span>
+                  <span class="tweet-list-preview">${escapeHtml(tweet.text_preview || tweet.text || "")}</span>
+                </span>
+              </span>
             </button>
           </li>
         `;
@@ -327,26 +511,19 @@ const ArchiveViewer = (() => {
     });
 
     updateSelectedListItem();
+    activateFallbacks(list);
   }
 
   function applyFilter(query) {
-    const normalized = query.trim().toLowerCase();
-    const filtered = !normalized
-      ? state.manifest
-      : state.manifest.filter((tweet) => {
-          const haystack = [
-            tweet.id,
-            tweet.text,
-            tweet.author?.username,
-            tweet.author?.display_name,
-          ]
-            .join(" ")
-            .toLowerCase();
+    state.query = query;
+    applyFilters();
+  }
 
-          return haystack.includes(normalized);
-        });
-
+  function applyFilters() {
+    const filtered = filteredTweets();
     renderList(filtered);
+    renderFilterChips();
+    renderResultsMeta(filtered);
 
     if (!filtered.some((tweet) => tweet.id === state.selectedId) && filtered[0]) {
       selectTweet(filtered[0].id, false);
@@ -358,11 +535,54 @@ const ArchiveViewer = (() => {
       const manifestData = await fetchJson("downloads/index.json");
       state.manifest = manifestData.tweets || [];
       setStatus(`${state.manifest.length} archived tweets loaded`);
-      renderList(state.manifest);
+      renderArchiveSummary();
+      populateAccountFilter();
+      renderFilterChips();
+      applyFilters();
 
       const filterInput = document.getElementById("tweet-filter");
       if (filterInput) {
         filterInput.addEventListener("input", (event) => applyFilter(event.target.value));
+      }
+
+      const accountFilter = document.getElementById("account-filter");
+      if (accountFilter) {
+        accountFilter.addEventListener("change", (event) => {
+          state.account = event.target.value;
+          applyFilters();
+        });
+      }
+
+      const dateFrom = document.getElementById("date-from");
+      if (dateFrom) {
+        dateFrom.addEventListener("change", (event) => {
+          state.dateFrom = event.target.value;
+          applyFilters();
+        });
+      }
+
+      const dateTo = document.getElementById("date-to");
+      if (dateTo) {
+        dateTo.addEventListener("change", (event) => {
+          state.dateTo = event.target.value;
+          applyFilters();
+        });
+      }
+
+      const clearFilters = document.getElementById("clear-filters");
+      if (clearFilters) {
+        clearFilters.addEventListener("click", () => {
+          state.query = "";
+          state.account = "";
+          state.dateFrom = "";
+          state.dateTo = "";
+          state.activeFilter = "all";
+          document.getElementById("tweet-filter").value = "";
+          document.getElementById("account-filter").value = "";
+          document.getElementById("date-from").value = "";
+          document.getElementById("date-to").value = "";
+          applyFilters();
+        });
       }
 
       const requestedId = getParam("tweet_id");

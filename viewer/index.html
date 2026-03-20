@@ -19,8 +19,34 @@
 
     <section class="archive-layout">
       <aside class="panel sidebar-panel">
-        <label for="tweet-filter" class="eyebrow">Search</label>
-        <input id="tweet-filter" class="filter-input" type="search" placeholder="Search by tweet text, author, or id">
+        <div class="sidebar-header">
+          <div>
+            <label for="tweet-filter" class="eyebrow">Search</label>
+            <input id="tweet-filter" class="filter-input" type="search" placeholder="Search by tweet text, author, or id">
+          </div>
+          <div id="archive-summary" class="archive-summary"></div>
+        </div>
+        <div class="filter-grid">
+          <div>
+            <label for="account-filter" class="eyebrow">Account</label>
+            <select id="account-filter" class="filter-input filter-select">
+              <option value="">All accounts</option>
+            </select>
+          </div>
+          <div>
+            <label for="date-from" class="eyebrow">From</label>
+            <input id="date-from" class="filter-input" type="date">
+          </div>
+          <div>
+            <label for="date-to" class="eyebrow">To</label>
+            <input id="date-to" class="filter-input" type="date">
+          </div>
+          <div class="filter-actions">
+            <button id="clear-filters" class="clear-button" type="button">Clear filters</button>
+          </div>
+        </div>
+        <div id="filter-chips" class="filter-chips"></div>
+        <div id="results-meta" class="results-meta"></div>
         <ul id="tweet-list" class="tweet-list"></ul>
       </aside>
 
