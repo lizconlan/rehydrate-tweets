@@ -6,6 +6,10 @@
   --line: #d4c5b1;
   --accent: #b24c36;
   --accent-soft: #f3d9d2;
+  --twitter-blue: #1d9bf0;
+  --twitter-blue-soft: #e8f5fd;
+  --twitter-line: #dfe7ec;
+  --twitter-text-soft: #667785;
   --card: rgba(255, 252, 247, 0.9);
   --shadow: 0 24px 60px rgba(49, 39, 29, 0.12);
   --radius: 24px;
@@ -97,6 +101,8 @@ a {
 
 .sidebar-panel {
   padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 253, 0.96));
 }
 
 .sidebar-header {
@@ -216,25 +222,33 @@ a {
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
+  border: 1px solid var(--twitter-line);
+  border-radius: 22px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .tweet-list-item {
   width: 100%;
-  margin: 0 0 10px;
-  padding: 14px;
-  border: 1px solid transparent;
-  border-radius: 18px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--twitter-line);
+  border-radius: 0;
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: background 140ms ease, box-shadow 140ms ease;
 }
 
 .tweet-list-item:hover,
 .tweet-list-item.is-selected {
-  border-color: var(--line);
-  background: rgba(255, 255, 255, 0.7);
-  transform: translateY(-1px);
+  background: var(--twitter-blue-soft);
+  box-shadow: inset 3px 0 0 var(--twitter-blue);
+}
+
+.tweet-list li:last-child .tweet-list-item {
+  border-bottom: 0;
 }
 
 .tweet-list-title,
@@ -257,24 +271,38 @@ a {
 .tweet-list-avatar {
   width: 48px;
   height: 48px;
-  border-radius: 16px;
+  border-radius: 999px;
   object-fit: cover;
-  background: var(--paper-strong);
+  background: #d9e7f0;
 }
 
 .tweet-list-avatar--placeholder {
   display: inline-block;
 }
 
-.tweet-list-title-row {
+.tweet-list-heading {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.tweet-list-title-row {
+  display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .tweet-list-title {
   font-weight: 700;
+}
+
+.tweet-list-handle,
+.tweet-list-date,
+.tweet-list-dot {
+  color: var(--twitter-text-soft);
+  font-size: 0.9rem;
 }
 
 .tweet-list-badges {
@@ -287,8 +315,8 @@ a {
 .tweet-list-badge {
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(178, 76, 54, 0.11);
-  color: var(--accent);
+  background: rgba(29, 155, 240, 0.12);
+  color: var(--twitter-blue);
   font-size: 0.74rem;
   font-weight: 700;
   white-space: nowrap;
@@ -301,10 +329,13 @@ a {
 }
 
 .tweet-list-preview {
-  margin-top: 8px;
-  color: var(--ink);
-  line-height: 1.45;
+  margin-top: 6px;
+  color: #0f1c28;
+  line-height: 1.42;
   overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .tweet-card {

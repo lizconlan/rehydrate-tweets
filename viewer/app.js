@@ -476,6 +476,7 @@ const ArchiveViewer = (() => {
         const byline = tweet.author?.display_name || tweet.author?.username || "Unknown author";
         const avatarCandidates = sourceCandidates(tweet.author || {}, "avatar");
         const avatarSrc = avatarCandidates[0];
+        const timestampLabel = formatTimestamp(tweet.timestamp);
         const badges = [];
         if (tweet.source_kind === "managed") {
           badges.push('<span class="tweet-list-badge">Imported</span>');
@@ -492,11 +493,15 @@ const ArchiveViewer = (() => {
               <span class="tweet-list-row">
                 ${avatarSrc ? `<img class="tweet-list-avatar" src="${escapeHtml(avatarSrc)}" alt="" data-fallbacks="${encodedFallbacks(avatarCandidates)}">` : '<span class="tweet-list-avatar tweet-list-avatar--placeholder"></span>'}
                 <span class="tweet-list-content">
-                  <span class="tweet-list-title-row">
-                    <span class="tweet-list-title">${escapeHtml(byline)}</span>
+                  <span class="tweet-list-heading">
+                    <span class="tweet-list-title-row">
+                      <span class="tweet-list-title">${escapeHtml(byline)}</span>
+                      <span class="tweet-list-handle">@${escapeHtml(tweet.author?.username || "unknown")}</span>
+                      <span class="tweet-list-dot">·</span>
+                      <span class="tweet-list-date">${escapeHtml(timestampLabel)}</span>
+                    </span>
                     <span class="tweet-list-badges">${badges.join("")}</span>
                   </span>
-                  <span class="tweet-list-meta">@${escapeHtml(tweet.author?.username || "unknown")} · ${escapeHtml(formatTimestamp(tweet.timestamp))}</span>
                   <span class="tweet-list-preview">${escapeHtml(tweet.text_preview || tweet.text || "")}</span>
                 </span>
               </span>
