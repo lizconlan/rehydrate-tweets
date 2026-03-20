@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tweet Archive Viewer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-mode="archive">
+  <main class="page-shell">
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">Local Archive</span>
+        <h1>Tweet Archive Viewer</h1>
+        <p>Browse hydrated tweets from your local cache, search by text or author, and open the original post when you want the source context.</p>
+      </div>
+      <div class="status-pill" data-role="status">Loading archive...</div>
+    </header>
+
+    <section class="archive-layout">
+      <aside class="panel sidebar-panel">
+        <label for="tweet-filter" class="eyebrow">Search</label>
+        <input id="tweet-filter" class="filter-input" type="search" placeholder="Search by tweet text, author, or id">
+        <ul id="tweet-list" class="tweet-list"></ul>
+      </aside>
+
+      <section class="panel detail-panel">
+        <div id="tweet-detail"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
