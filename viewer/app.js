@@ -361,6 +361,103 @@ const ArchiveViewer = (() => {
     `;
   }
 
+  function renderSelectionSummary(tweet) {
+    const author = tweet.author || {};
+    const profileUrl = author.username ? `https://twitter.com/${author.username}` : "#";
+    const tweetUrl = tweet.direct_link || profileUrl;
+    const mediaCount = (tweet.media || []).length;
+    const externalLinkCount = (tweet.external_links || []).length;
+    const mentionCount = (tweet.mentions || []).length;
+
+    return `
+      <section class="selection-card">
+        <div class="selection-row">
+          <span class="selection-label">Author</span>
+          <a class="selection-value-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">
+            ${escapeHtml(author.display_name || author.username || "Unknown author")}
+          </a>
+        </div>
+        <div class="selection-row">
+          <span class="selection-label">Handle</span>
+          <span class="selection-value">@${escapeHtml(author.username || "unknown")}</span>
+        </div>
+        <div class="selection-row">
+          <span class="selection-label">Posted</span>
+          <span class="selection-value">${escapeHtml(formatTimestamp(tweet.timestamp))}</span>
+        </div>
+        <div class="selection-row">
+          <span class="selection-label">Tweet id</span>
+          <span class="selection-value">${escapeHtml(String(tweet.id || ""))}</span>
+        </div>
+        <div class="selection-grid">
+          <div class="selection-pill">
+            <strong>${mediaCount}</strong>
+            <span>Media</span>
+          </div>
+          <div class="selection-pill">
+            <strong>${externalLinkCount}</strong>
+            <span>Links</span>
+          </div>
+          <div class="selection-pill">
+            <strong>${mentionCount}</strong>
+            <span>Mentions</span>
+          </div>
+          <div class="selection-pill">
+            <strong>${tweet.has_video ? "Yes" : "No"}</strong>
+            <span>Video</span>
+          </div>
+        </div>
+        <div class="selection-actions">
+          <a class="tweet-link" href="${escapeHtml(tweetUrl)}" target="_blank" rel="noreferrer">Open original</a>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderTimelineTweet(tweet) {
+    const author = tweet.author || {};
+    const avatarCandidates = sourceCandidates(author, "avatar");
+    const avatarSrc = avatarCandidates[0];
+    const profileUrl = author.username ? `https://twitter.com/${author.username}` : "#";
+    const tweetUrl = tweet.direct_link || profileUrl;
+    const badges = [];
+
+    if (tweet.source_kind === "managed") {
+      badges.push('<span class="tweet-list-badge">Imported</span>');
+    }
+    if (tweet.has_video) {
+      badges.push('<span class="tweet-list-badge">Video</span>');
+    } else if ((tweet.media_count || 0) > 0) {
+      badges.push(`<span class="tweet-list-badge">${tweet.media_count} media</span>`);
+    }
+
+    return `
+      <article class="timeline-tweet ${tweet.id === state.selectedId ? "is-selected" : ""}" data-tweet-id="${escapeHtml(tweet.id)}">
+        <div class="timeline-avatar-col">
+          ${avatarSrc ? `<img class="tweet-list-avatar" src="${escapeHtml(avatarSrc)}" alt="" data-fallbacks="${encodedFallbacks(avatarCandidates)}">` : '<span class="tweet-list-avatar tweet-list-avatar--placeholder"></span>'}
+        </div>
+        <div class="timeline-body">
+          <header class="timeline-meta-row">
+            <a class="timeline-author-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">
+              <span class="tweet-list-title">${escapeHtml(author.display_name || author.username || "Unknown author")}</span>
+              <span class="tweet-list-handle">@${escapeHtml(author.username || "unknown")}</span>
+            </a>
+            <span class="tweet-list-dot">·</span>
+            <span class="tweet-list-date">${escapeHtml(formatTimestamp(tweet.timestamp))}</span>
+            <span class="timeline-badges">${badges.join("")}</span>
+          </header>
+          <button class="timeline-open" data-tweet-id="${escapeHtml(tweet.id)}" type="button">
+            <p class="timeline-text">${escapeHtml(tweet.text || "").replace(/\n/g, "<br>")}</p>
+            ${renderMedia(tweet.media)}
+          </button>
+          <footer class="timeline-footer">
+            <a class="tweet-link" href="${escapeHtml(tweetUrl)}" target="_blank" rel="noreferrer">Open original</a>
+          </footer>
+        </div>
+      </article>
+    `;
+  }
+
   async function fetchJson(path) {
     const response = await fetch(path);
     if (!response.ok) {
@@ -382,7 +479,7 @@ const ArchiveViewer = (() => {
       return;
     }
 
-    panel.innerHTML = renderTweet(tweet);
+    panel.innerHTML = renderSelectionSummary(tweet);
     activateFallbacks(panel);
   }
 
@@ -424,7 +521,7 @@ const ArchiveViewer = (() => {
   }
 
   function updateSelectedListItem() {
-    document.querySelectorAll(".tweet-list-item").forEach((node) => {
+    document.querySelectorAll(".timeline-tweet").forEach((node) => {
       node.classList.toggle("is-selected", node.dataset.tweetId === state.selectedId);
     });
   }
@@ -467,51 +564,13 @@ const ArchiveViewer = (() => {
     }
 
     if (!tweets.length) {
-      list.innerHTML = '<li class="empty-state">No local hydrated tweets matched that search.</li>';
+      list.innerHTML = '<div class="empty-state">No local hydrated tweets matched that search.</div>';
       return;
     }
 
-    list.innerHTML = tweets
-      .map((tweet) => {
-        const byline = tweet.author?.display_name || tweet.author?.username || "Unknown author";
-        const avatarCandidates = sourceCandidates(tweet.author || {}, "avatar");
-        const avatarSrc = avatarCandidates[0];
-        const timestampLabel = formatTimestamp(tweet.timestamp);
-        const badges = [];
-        if (tweet.source_kind === "managed") {
-          badges.push('<span class="tweet-list-badge">Imported</span>');
-        }
-        if (tweet.has_video) {
-          badges.push('<span class="tweet-list-badge">Video</span>');
-        } else if ((tweet.media_count || 0) > 0) {
-          badges.push(`<span class="tweet-list-badge">${tweet.media_count} media</span>`);
-        }
+    list.innerHTML = tweets.map((tweet) => renderTimelineTweet(tweet)).join("");
 
-        return `
-          <li>
-            <button class="tweet-list-item" data-tweet-id="${escapeHtml(tweet.id)}" type="button">
-              <span class="tweet-list-row">
-                ${avatarSrc ? `<img class="tweet-list-avatar" src="${escapeHtml(avatarSrc)}" alt="" data-fallbacks="${encodedFallbacks(avatarCandidates)}">` : '<span class="tweet-list-avatar tweet-list-avatar--placeholder"></span>'}
-                <span class="tweet-list-content">
-                  <span class="tweet-list-heading">
-                    <span class="tweet-list-title-row">
-                      <span class="tweet-list-title">${escapeHtml(byline)}</span>
-                      <span class="tweet-list-handle">@${escapeHtml(tweet.author?.username || "unknown")}</span>
-                      <span class="tweet-list-dot">·</span>
-                      <span class="tweet-list-date">${escapeHtml(timestampLabel)}</span>
-                    </span>
-                    <span class="tweet-list-badges">${badges.join("")}</span>
-                  </span>
-                  <span class="tweet-list-preview">${escapeHtml(tweet.text_preview || tweet.text || "")}</span>
-                </span>
-              </span>
-            </button>
-          </li>
-        `;
-      })
-      .join("");
-
-    list.querySelectorAll(".tweet-list-item").forEach((button) => {
+    list.querySelectorAll("[data-tweet-id]").forEach((button) => {
       button.addEventListener("click", () => selectTweet(button.dataset.tweetId));
     });
 
