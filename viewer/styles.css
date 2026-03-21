@@ -413,6 +413,11 @@ a {
   white-space: nowrap;
 }
 
+.tweet-list-badge--warning {
+  background: rgba(178, 76, 54, 0.14);
+  color: var(--accent);
+}
+
 .timeline-open {
   width: 100%;
   padding: 0;
@@ -507,6 +512,40 @@ a {
   font-family: var(--font-serif);
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   line-height: 1.55;
+}
+
+.capture-note {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(178, 76, 54, 0.1);
+  color: #6d392d;
+  font-size: 0.92rem;
+}
+
+.capture-note--banner {
+  margin: 0 0 2px;
+  border: 1px solid rgba(178, 76, 54, 0.18);
+  background:
+    linear-gradient(90deg, rgba(178, 76, 54, 0.16), rgba(178, 76, 54, 0.08));
+}
+
+.capture-note strong {
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.capture-note-copy {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.capture-note--compact {
+  margin: 0 0 2px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
 }
 
 .media-grid {

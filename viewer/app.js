@@ -24,6 +24,128 @@ const ArchiveViewer = (() => {
       .replace(/'/g, "&#39;");
   }
 
+  function decodeHtmlEntities(value) {
+    const input = String(value ?? "");
+    if (!input.includes("&")) {
+      return input;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = input;
+    return textarea.value.replace(/\u00a0/g, " ");
+  }
+
+  function normalizeUrl(rawUrl) {
+    if (!rawUrl) {
+      return "";
+    }
+
+    if (/^https?:\/\//i.test(rawUrl)) {
+      return rawUrl;
+    }
+
+    if (/^www\./i.test(rawUrl)) {
+      return `https://${rawUrl}`;
+    }
+
+    return rawUrl;
+  }
+
+  function trimUrlMatch(rawMatch) {
+    const match = String(rawMatch ?? "");
+    const trimmed = match.match(/^(.*?)([),.!?:;"']*)$/);
+
+    if (!trimmed) {
+      return { url: match, trailing: "" };
+    }
+
+    return {
+      url: trimmed[1],
+      trailing: trimmed[2],
+    };
+  }
+
+  function formatTweetText(text, externalLinks = []) {
+    const decodedText = decodeHtmlEntities(text);
+    const pendingLinks = [...externalLinks];
+    const urlPattern = /(?:https?:\/\/|www\.)[^\s<]+/gi;
+
+    return decodedText
+      .split("\n")
+      .map((line) => {
+        urlPattern.lastIndex = 0;
+        let cursor = 0;
+        let formatted = "";
+        let match;
+
+        while ((match = urlPattern.exec(line)) !== null) {
+          const matchedText = match[0];
+          const { url, trailing } = trimUrlMatch(matchedText);
+
+          formatted += escapeHtml(line.slice(cursor, match.index));
+
+          if (!url) {
+            formatted += escapeHtml(matchedText);
+            cursor = match.index + matchedText.length;
+            continue;
+          }
+
+          const fallbackUrl = normalizeUrl(url);
+          const nextExternalLink = pendingLinks[0];
+          const shouldExpandTco = /^https?:\/\/t\.co\//i.test(fallbackUrl) && nextExternalLink;
+          const href = shouldExpandTco ? nextExternalLink.expanded_url : fallbackUrl;
+          const label = shouldExpandTco
+            ? (nextExternalLink.title || nextExternalLink.display_url || nextExternalLink.expanded_url)
+            : url;
+
+          if (shouldExpandTco) {
+            pendingLinks.shift();
+          }
+
+          formatted += `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+          formatted += escapeHtml(trailing);
+          cursor = match.index + matchedText.length;
+        }
+
+        formatted += escapeHtml(line.slice(cursor));
+        return formatted;
+      })
+      .join("<br>");
+  }
+
+  function isLikelyIncompleteText(text) {
+    const value = decodeHtmlEntities(text).trim();
+    if (!value) {
+      return false;
+    }
+
+    const endsWithEllipsis = /(?:…|\.\.\.)$/.test(value);
+    const looksLikeManualRetweet = /^RT\s+@\w+:/i.test(value);
+    const clippedMidWord = /\b[^\s]+\u2026$/.test(value);
+    const clippedAfterQuote = /["'”]\s*$/.test(value) && value.includes("…");
+
+    return endsWithEllipsis && (looksLikeManualRetweet || clippedMidWord || clippedAfterQuote);
+  }
+
+  function renderIncompleteTextNotice(tweet, compact = false) {
+    if (!isLikelyIncompleteText(tweet.text || "")) {
+      return "";
+    }
+
+    const className = compact ? "capture-note capture-note--compact" : "capture-note capture-note--banner";
+    const label = compact ? "Captured text may be incomplete" : "Captured text may be incomplete";
+    const body = compact
+      ? ""
+      : '<p class="capture-note-copy">This looks like truncated source text from the archive, not a viewer rendering problem.</p>';
+
+    return `
+      <section class="${className}">
+        <strong>${label}</strong>
+        ${body}
+      </section>
+    `;
+  }
+
   function getParam(name) {
     return new URLSearchParams(window.location.search).get(name);
   }
@@ -332,6 +454,7 @@ const ArchiveViewer = (() => {
 
     return `
       <article class="tweet-card">
+        ${renderIncompleteTextNotice(tweet)}
         <header class="tweet-header">
           <a class="author-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">
             ${avatarSrc ? `<img class="author-avatar" src="${escapeHtml(avatarSrc)}" alt="" data-fallbacks="${encodedFallbacks(avatarCandidates)}">` : '<div class="author-avatar author-avatar--placeholder"></div>'}
@@ -346,7 +469,7 @@ const ArchiveViewer = (() => {
           <a class="tweet-link" href="${escapeHtml(tweetUrl)}" target="_blank" rel="noreferrer">Open original</a>
         </header>
         <div class="tweet-body">
-          <p class="tweet-text">${escapeHtml(tweet.text || "").replace(/\n/g, "<br>")}</p>
+          <p class="tweet-text">${formatTweetText(tweet.text || "", tweet.external_links || [])}</p>
           ${renderMedia(tweet.media)}
         </div>
         <footer class="tweet-footer">
@@ -371,6 +494,7 @@ const ArchiveViewer = (() => {
 
     return `
       <section class="selection-card">
+        ${renderIncompleteTextNotice(tweet)}
         <div class="selection-row">
           <span class="selection-label">Author</span>
           <a class="selection-value-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">
@@ -425,6 +549,9 @@ const ArchiveViewer = (() => {
     if (tweet.source_kind === "managed") {
       badges.push('<span class="tweet-list-badge">Imported</span>');
     }
+    if (isLikelyIncompleteText(tweet.text || "")) {
+      badges.push('<span class="tweet-list-badge tweet-list-badge--warning">Possibly truncated</span>');
+    }
     if (tweet.has_video) {
       badges.push('<span class="tweet-list-badge">Video</span>');
     } else if ((tweet.media_count || 0) > 0) {
@@ -437,6 +564,7 @@ const ArchiveViewer = (() => {
           ${avatarSrc ? `<img class="tweet-list-avatar" src="${escapeHtml(avatarSrc)}" alt="" data-fallbacks="${encodedFallbacks(avatarCandidates)}">` : '<span class="tweet-list-avatar tweet-list-avatar--placeholder"></span>'}
         </div>
         <div class="timeline-body">
+          ${renderIncompleteTextNotice(tweet, true)}
           <header class="timeline-meta-row">
             <a class="timeline-author-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">
               <span class="tweet-list-title">${escapeHtml(author.display_name || author.username || "Unknown author")}</span>
@@ -447,7 +575,7 @@ const ArchiveViewer = (() => {
             <span class="timeline-badges">${badges.join("")}</span>
           </header>
           <button class="timeline-open" data-tweet-id="${escapeHtml(tweet.id)}" type="button">
-            <p class="timeline-text">${escapeHtml(tweet.text || "").replace(/\n/g, "<br>")}</p>
+            <p class="timeline-text">${formatTweetText(tweet.text || "", tweet.external_links || [])}</p>
             ${renderMedia(tweet.media)}
           </button>
           <footer class="timeline-footer">
