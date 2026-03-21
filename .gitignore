@@ -1,4 +1,16 @@
 .vscode
 **/.DS_Store
+tmp/
 tmp/zips/*.zip
 viewer/downloads/
+layers/python/
+athena/
+lambdas*
+local
+twitter-responses
+volume
+notes*
+edits/
+*.pkg
+/*.json
+**/__pycache__/
