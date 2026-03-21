@@ -4,15 +4,29 @@ A hastily implemented AWS-based toy I made to grab and store my Twitter Favourit
 
 When you download your data archive from Twitter, it includes your Likes, but there's not much more than the the basic message text and the status_id in there. The concept was always that if you wanted the original message back - assuming it was still available - you'd have to "rehydrate" it by calling the API with the status_id…
 
+## Current status
+
+This repository is now partly a historical record and partly a local archive viewer.
+
+The original data collection flow depended on Twitter's API, Localstack, a Lambda layer containing Tweepy, and a bunch of surrounding assumptions that were true at the time. Those foundations have shifted. Even if you can still read the code, you should not assume the original end-to-end collection workflow is runnable unchanged today.
+
+What still seems useful and maintainable here is the local viewer tooling:
+
+* `make refresh-viewer-data` rebuilds the viewer cache from hydrated tweet JSON already present in the repo
+* `make launch-archive-viewer` opens the archive browser
+* `make import-viewer-subset SOURCE=/path/to/archive-or-raw_data` imports a curated subset from a larger archive into the viewer's managed data area
+
 ### Disclaimer
 
 The code is a little scruffier - and has 100% fewer tests - than I'd ideally like, partly because it started out as toy, but mostly because I thought I had about a week to get everything finished off, working and all the data collected. (The data collection alone took several days.) So there are mistakes and regrets as I glued together old code snipppets - that didn't always do what I half remembered (see "raw_data" actually containing edited highlights 🙄) - in a last minute rush. This repo is me trying to document and rearrange (and hopefully improve) the jumble of stuff that ended up in my AWS account.
 
-## Application overview
+## What this was
+
+The original shape of the project was:
 
 ![Diagram showing the basic application outline. The users's request from their commmand line goes via an AWS Gateway (HTTP API) to the Hydrate Tweet Lambda which gets data for an individual tweet and writes a JSON representation of the data to an S3 Bucket. The object creation causes an S3 trigger to fire, launching the Augment Media Lambda which grabs the media connected to the tweet and writes it back to the S3 Bucket](https://github.com/lizconlan/rehydrate-tweets/blob/main/hydrate_tweets.jpg?raw=true)
 
-## Principal Cast (Data collection)
+## Principal cast (Original data collection)
 
 * Docker
 * An S3 bucket
@@ -37,12 +51,47 @@ The code is a little scruffier - and has 100% fewer tests - than I'd ideally lik
 * You have homebrew installed
 * You have curl installed (or are prepared to add it)
 
-## You will also need
+## Historical prerequisites
 
 * A Localstack Pro key (a trial key is fine)
 * A Twitter developer account
 
-## How to play with it
+## What still works locally
+
+If you already have hydrated tweet JSON files, the local viewer is the most useful part of this repo.
+
+### Rebuild the viewer cache
+
+Run:
+
+`make refresh-viewer-data`
+
+This scans the repo for tweet-shaped JSON, normalises it for the viewer, and writes the browser-ready data into `viewer/downloads/`.
+
+### Launch the archive viewer
+
+Run:
+
+`make launch-archive-viewer`
+
+That starts a lightweight local web server and opens the archive browser in `viewer/index.html`.
+
+### Import a subset from a larger archive
+
+Run:
+
+`make import-viewer-subset SOURCE=/path/to/archive-or-raw_data`
+
+There are a few optional knobs:
+
+* `LIMIT=<n>` to cap the number of imported tweets
+* `MODE=latest` or `MODE=earliest`
+* `REQUIRE_MEDIA=1` to keep only tweets with media
+* `REQUIRE_LOCAL_MEDIA=1` to keep only tweets whose media already exists locally
+
+## Original setup notes
+
+The following describes the original collection workflow. It is kept here as documentation of intent and architecture, not as a promise that the whole thing still works unchanged.
 
 ### First time setup
 
@@ -81,11 +130,11 @@ You can also "download" files from the local cloud bucket to your computer using
 
 `awslocal s3 cp s3://dev-datalake/raw_data/1519015795904315392.json .`
 
-Or you can try the tweet preview feature to see an HTML version of the tweet constructed from the data captured by the API call (requires npm):
+Or you can try the older single-tweet preview feature to see an HTML version of the tweet constructed from the data captured by the API call (requires npm):
 
 `make launch-tweet-viewer`
 
-This will launch a lightweight local web server and load tweet_id 1519015795904315392 by default. Provided you have download its files, you can see a different tweet by changing the tweet_id parameter value in the browser, or specifiy a different id to start with by calling the launcher with `make launch-tweet-viewer TWEET_ID=<YOUR_CHOSEN_ID>`
+This will launch a lightweight local web server and load tweet_id 1519015795904315392 by default. Provided you have downloaded its files, you can see a different tweet by changing the `tweet_id` parameter value in the browser, or specify a different id to start with by calling the launcher with `make launch-tweet-viewer TWEET_ID=<YOUR_CHOSEN_ID>`.
 
 ## Credits
 
