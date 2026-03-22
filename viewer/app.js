@@ -153,6 +153,39 @@ const ArchiveViewer = (() => {
     return new URLSearchParams(window.location.search).get(name);
   }
 
+  function archiveBaseUrl() {
+    const current = new URL(window.location.href);
+    const archivePath = current.pathname.replace(/\/tweet\.html$/, "/index.html");
+    return new URL(archivePath || "index.html", current);
+  }
+
+  function archiveUrlForAccount(account, tweetId = "") {
+    const url = archiveBaseUrl();
+    const normalizedAccount = normalizeAccountInput(account, true);
+
+    if (normalizedAccount) {
+      url.searchParams.set("account", normalizedAccount);
+    } else {
+      url.searchParams.delete("account");
+    }
+
+    if (tweetId) {
+      url.searchParams.set("tweet_id", tweetId);
+    } else {
+      url.searchParams.delete("tweet_id");
+    }
+
+    return url.toString();
+  }
+
+  function syncArchiveUrl(tweetId = state.selectedId) {
+    if ((document.body.dataset.mode || "archive") !== "archive") {
+      return;
+    }
+
+    window.history.replaceState({}, "", archiveUrlForAccount(state.account, tweetId));
+  }
+
   function localAssetPath(assetPath) {
     if (!assetPath) {
       return "";
@@ -288,15 +321,20 @@ const ArchiveViewer = (() => {
         .filter(Boolean),
     )].sort((a, b) => a.localeCompare(b));
 
+    state.account = normalizeAccountInput(state.account);
     input.value = state.account;
     renderAccountSuggestions(state.account);
   }
 
-  function normalizeAccountInput(rawValue) {
+  function normalizeAccountInput(rawValue, allowUnknown = false) {
     const normalized = String(rawValue ?? "").trim().replace(/^@+/, "");
 
     if (!normalized) {
       return "";
+    }
+
+    if (allowUnknown || !state.accounts.length) {
+      return normalized;
     }
 
     return state.accounts.find((account) => account.toLowerCase() === normalized.toLowerCase()) || "";
@@ -562,6 +600,7 @@ const ArchiveViewer = (() => {
     const author = tweet.author || {};
     const avatarCandidates = sourceCandidates(author, "avatar");
     const avatarSrc = avatarCandidates[0];
+    const archiveAuthorUrl = author.username ? archiveUrlForAccount(author.username) : "#";
     const profileUrl = author.username ? `https://twitter.com/${author.username}` : "#";
     const tweetUrl = tweet.direct_link || profileUrl;
 
@@ -569,7 +608,7 @@ const ArchiveViewer = (() => {
       <article class="tweet-card">
         ${renderIncompleteTextNotice(tweet)}
         <header class="tweet-header">
-          <a class="author-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">
+          <a class="author-link" href="${escapeHtml(archiveAuthorUrl)}">
             ${avatarSrc ? `<img class="author-avatar" src="${escapeHtml(avatarSrc)}" alt="" data-fallbacks="${encodedFallbacks(avatarCandidates)}">` : '<div class="author-avatar author-avatar--placeholder"></div>'}
             <div class="author-copy">
               <div class="author-name-row">
@@ -599,6 +638,7 @@ const ArchiveViewer = (() => {
 
   function renderSelectionSummary(tweet) {
     const author = tweet.author || {};
+    const archiveAuthorUrl = author.username ? archiveUrlForAccount(author.username) : "#";
     const profileUrl = author.username ? `https://twitter.com/${author.username}` : "#";
     const tweetUrl = tweet.direct_link || profileUrl;
     const mediaCount = (tweet.media || []).length;
@@ -610,7 +650,7 @@ const ArchiveViewer = (() => {
         ${renderIncompleteTextNotice(tweet)}
         <div class="selection-row">
           <span class="selection-label">Author</span>
-          <a class="selection-value-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">
+          <a class="selection-value-link" href="${escapeHtml(archiveAuthorUrl)}">
             ${escapeHtml(author.display_name || author.username || "Unknown author")}
           </a>
         </div>
@@ -645,6 +685,7 @@ const ArchiveViewer = (() => {
           </div>
         </div>
         <div class="selection-actions">
+          <a class="tweet-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">Open profile</a>
           <a class="tweet-link" href="${escapeHtml(tweetUrl)}" target="_blank" rel="noreferrer">Open original</a>
         </div>
       </section>
@@ -655,6 +696,7 @@ const ArchiveViewer = (() => {
     const author = tweet.author || {};
     const avatarCandidates = sourceCandidates(author, "avatar");
     const avatarSrc = avatarCandidates[0];
+    const archiveAuthorUrl = author.username ? archiveUrlForAccount(author.username) : "#";
     const profileUrl = author.username ? `https://twitter.com/${author.username}` : "#";
     const tweetUrl = tweet.direct_link || profileUrl;
     const badges = [];
@@ -679,7 +721,7 @@ const ArchiveViewer = (() => {
         <div class="timeline-body">
           ${renderIncompleteTextNotice(tweet, true)}
           <header class="timeline-meta-row">
-            <a class="timeline-author-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">
+            <a class="timeline-author-link" href="${escapeHtml(archiveAuthorUrl)}">
               <span class="tweet-list-title">${escapeHtml(author.display_name || author.username || "Unknown author")}</span>
               <span class="tweet-list-handle">@${escapeHtml(author.username || "unknown")}</span>
             </a>
@@ -782,9 +824,7 @@ const ArchiveViewer = (() => {
       setStatus(`${state.manifest.length} archived tweets loaded`);
 
       if (pushHistory) {
-        const url = new URL(window.location.href);
-        url.searchParams.set("tweet_id", tweetId);
-        window.history.replaceState({}, "", url);
+        syncArchiveUrl(tweetId);
       }
     } catch (error) {
       updateSelectionDetails({
@@ -830,15 +870,26 @@ const ArchiveViewer = (() => {
     renderFilterChips();
     renderResultsMeta(filtered);
 
+    if (!filtered.length) {
+      state.selectedId = null;
+      syncArchiveUrl("");
+      return;
+    }
+
     if (!filtered.some((tweet) => tweet.id === state.selectedId) && filtered[0]) {
       selectTweet(filtered[0].id, false);
+      syncArchiveUrl(filtered[0].id);
+      return;
     }
+
+    syncArchiveUrl(state.selectedId);
   }
 
   async function initArchivePage() {
     try {
       const manifestData = await fetchJson("downloads/index.json");
       state.manifest = manifestData.tweets || [];
+      state.account = normalizeAccountInput(getParam("account"), true);
       setStatus(`${state.manifest.length} archived tweets loaded`);
       renderArchiveSummary();
       populateAccountFilter();
