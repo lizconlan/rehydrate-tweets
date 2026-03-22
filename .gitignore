@@ -3,6 +3,7 @@
 tmp/
 tmp/zips/*.zip
 viewer/downloads/
+viewer/downloads/index.json
 layers/python/
 athena/
 lambdas*

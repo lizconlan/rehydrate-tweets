@@ -22,9 +22,6 @@
           <input id="tweet-filter" class="filter-input toolbar-search-input" type="search" placeholder="Search tweets, people, ids">
         </div>
       </div>
-      <div class="toolbar-meta">
-        <div id="results-meta" class="results-meta"></div>
-      </div>
     </header>
 
     <section class="archive-layout">
@@ -80,7 +77,9 @@
             <div id="pagination-controls" class="pagination-controls"></div>
           </div>
         </header>
-        <div id="tweet-list" class="tweet-timeline"></div>
+        <div class="timeline-scroll-surface">
+          <div id="tweet-list" class="tweet-timeline"></div>
+        </div>
       </section>
     </section>
   </main>
