@@ -7,20 +7,35 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body data-mode="archive">
-  <main class="page-shell">
-    <section class="archive-layout">
-      <aside class="panel rail-panel">
-        <div class="rail-brand">
+  <main class="page-shell gmail-shell">
+    <header class="panel app-toolbar">
+      <div class="toolbar-main">
+        <div class="toolbar-brand">
           <span class="rail-mark">t</span>
           <div>
             <span class="eyebrow">Local Archive</span>
             <h1>Tweet Archive</h1>
           </div>
         </div>
-        <p class="rail-copy">A personal archive browser with old-Twitter-inspired reading flow and modern filters.</p>
+        <div class="toolbar-search">
+          <label for="tweet-filter" class="eyebrow">Search archive</label>
+          <input id="tweet-filter" class="filter-input toolbar-search-input" type="search" placeholder="Search tweets, people, ids">
+        </div>
+      </div>
+      <div class="toolbar-meta">
+        <div id="results-meta" class="results-meta"></div>
+      </div>
+    </header>
+
+    <section class="archive-layout">
+      <aside class="panel rail-panel">
+        <div class="rail-section rail-section--nav">
+          <span class="eyebrow">Views</span>
+          <div id="filter-chips" class="filter-chips"></div>
+        </div>
         <div class="rail-section">
-          <label for="tweet-filter" class="eyebrow">Search</label>
-          <input id="tweet-filter" class="filter-input" type="search" placeholder="Search tweets, people, ids">
+          <span class="eyebrow">Archive stats</span>
+          <div id="archive-summary" class="archive-summary"></div>
         </div>
         <div class="filter-grid">
           <div>
@@ -52,38 +67,17 @@
             <button id="clear-filters" class="clear-button" type="button">Clear filters</button>
           </div>
         </div>
-        <div class="rail-section">
-          <span class="eyebrow">Views</span>
-          <div id="filter-chips" class="filter-chips"></div>
-        </div>
-        <div class="rail-section">
-          <div class="status-pill" data-role="status">Loading archive...</div>
-        </div>
       </aside>
 
       <section class="panel timeline-panel">
         <header class="timeline-header">
           <div>
-            <span class="eyebrow">Timeline</span>
-            <h2>Archive Feed</h2>
+            <span class="eyebrow">Messages</span>
+            <h2>Archive Inbox</h2>
           </div>
-          <div id="results-meta" class="results-meta"></div>
         </header>
         <div id="tweet-list" class="tweet-timeline"></div>
       </section>
-
-      <aside class="panel detail-panel">
-        <div class="detail-sticky">
-          <div class="detail-header">
-            <div>
-              <span class="eyebrow">Archive Context</span>
-              <h2>Snapshot</h2>
-            </div>
-          </div>
-          <div id="archive-summary" class="archive-summary"></div>
-          <div id="tweet-detail"></div>
-        </div>
-      </aside>
     </section>
   </main>
 
