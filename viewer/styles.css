@@ -1,3 +1,8 @@
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 :root {
   --paper: #f6f1e8;
   --paper-strong: #efe6d8;
@@ -143,12 +148,14 @@ a {
 
 .detail-panel {
   padding: 18px;
+  position: sticky;
+  top: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 253, 0.94));
 }
 
 .detail-sticky {
-  position: sticky;
-  top: 14px;
   display: grid;
   gap: 18px;
 }
@@ -698,6 +705,12 @@ a {
   .detail-panel,
   .rail-panel {
     padding: 16px;
+  }
+
+  .detail-panel {
+    position: static;
+    overflow: visible;
+    overscroll-behavior: auto;
   }
 
   .archive-summary {
