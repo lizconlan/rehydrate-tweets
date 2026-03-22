@@ -5,6 +5,9 @@ const ArchiveViewer = (() => {
     query: "",
     activeFilter: "all",
     account: "",
+    accounts: [],
+    accountSuggestions: [],
+    activeAccountIndex: -1,
     dateFrom: "",
     dateTo: "",
   };
@@ -273,23 +276,133 @@ const ArchiveViewer = (() => {
   }
 
   function populateAccountFilter() {
-    const select = document.getElementById("account-filter");
-    if (!select) {
+    const input = document.getElementById("account-filter");
+    const options = document.getElementById("account-filter-options");
+    if (!input || !options) {
       return;
     }
 
-    const accounts = [...new Set(
+    state.accounts = [...new Set(
       state.manifest
         .map((tweet) => tweet.author?.username)
         .filter(Boolean),
     )].sort((a, b) => a.localeCompare(b));
 
-    select.innerHTML = [
-      '<option value="">All accounts</option>',
-      ...accounts.map((account) => `<option value="${escapeHtml(account)}">@${escapeHtml(account)}</option>`),
-    ].join("");
+    input.value = state.account;
+    renderAccountSuggestions(state.account);
+  }
 
-    select.value = state.account;
+  function normalizeAccountInput(rawValue) {
+    const normalized = String(rawValue ?? "").trim().replace(/^@+/, "");
+
+    if (!normalized) {
+      return "";
+    }
+
+    return state.accounts.find((account) => account.toLowerCase() === normalized.toLowerCase()) || "";
+  }
+
+  function syncAccountFilterInput() {
+    const accountFilter = document.getElementById("account-filter");
+    if (accountFilter) {
+      accountFilter.value = state.account;
+    }
+  }
+
+  function filteredAccounts(rawValue) {
+    const normalized = String(rawValue ?? "").trim().replace(/^@+/, "").toLowerCase();
+    if (!normalized) {
+      return state.accounts;
+    }
+
+    return state.accounts.filter((account) => account.toLowerCase().includes(normalized));
+  }
+
+  function closeAccountSuggestions() {
+    const options = document.getElementById("account-filter-options");
+    const input = document.getElementById("account-filter");
+    state.activeAccountIndex = -1;
+    if (options) {
+      options.classList.remove("is-open");
+      options.innerHTML = "";
+    }
+    if (input) {
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+    }
+  }
+
+  function renderAccountSuggestions(rawValue) {
+    const options = document.getElementById("account-filter-options");
+    const input = document.getElementById("account-filter");
+    if (!options || !input) {
+      return;
+    }
+
+    state.accountSuggestions = filteredAccounts(rawValue).slice(0, 12);
+    state.activeAccountIndex = -1;
+
+    if (!document.activeElement || document.activeElement !== input) {
+      closeAccountSuggestions();
+      return;
+    }
+
+    if (!state.accountSuggestions.length) {
+      options.innerHTML = '<div class="combo-filter-empty">No matching accounts</div>';
+      options.classList.add("is-open");
+      input.setAttribute("aria-expanded", "true");
+      return;
+    }
+
+    options.innerHTML = state.accountSuggestions
+      .map((account, index) => `
+        <button
+          id="account-option-${index}"
+          class="combo-filter-option"
+          data-account="${escapeHtml(account)}"
+          data-index="${index}"
+          role="option"
+          type="button"
+        >
+          @${escapeHtml(account)}
+        </button>
+      `)
+      .join("");
+
+    options.classList.add("is-open");
+    input.setAttribute("aria-expanded", "true");
+
+    options.querySelectorAll(".combo-filter-option").forEach((button) => {
+      button.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        state.account = button.dataset.account || "";
+        syncAccountFilterInput();
+        closeAccountSuggestions();
+        applyFilters();
+      });
+    });
+  }
+
+  function updateActiveAccountSuggestion(index) {
+    const input = document.getElementById("account-filter");
+    const options = document.getElementById("account-filter-options");
+    if (!input || !options) {
+      return;
+    }
+
+    state.activeAccountIndex = index;
+    options.querySelectorAll(".combo-filter-option").forEach((button) => {
+      const isActive = Number(button.dataset.index) === index;
+      button.classList.toggle("is-active", isActive);
+      if (isActive) {
+        input.setAttribute("aria-activedescendant", button.id);
+        button.scrollIntoView({ block: "nearest" });
+      }
+    });
+
+    if (index < 0) {
+      input.removeAttribute("aria-activedescendant");
+    }
   }
 
   function renderArchiveSummary() {
@@ -739,11 +852,65 @@ const ArchiveViewer = (() => {
 
       const accountFilter = document.getElementById("account-filter");
       if (accountFilter) {
-        accountFilter.addEventListener("change", (event) => {
-          state.account = event.target.value;
+        const updateAccountFilter = (event) => {
+          state.account = normalizeAccountInput(event.target.value);
+          syncAccountFilterInput();
+          closeAccountSuggestions();
           applyFilters();
+        };
+
+        accountFilter.addEventListener("input", (event) => {
+          renderAccountSuggestions(event.target.value);
+        });
+        accountFilter.addEventListener("focus", (event) => {
+          renderAccountSuggestions(event.target.value);
+        });
+        accountFilter.addEventListener("keydown", (event) => {
+          if (!state.accountSuggestions.length) {
+            if (event.key === "Escape") {
+              closeAccountSuggestions();
+            }
+            return;
+          }
+
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            const nextIndex = Math.min(state.activeAccountIndex + 1, state.accountSuggestions.length - 1);
+            updateActiveAccountSuggestion(nextIndex);
+            return;
+          }
+
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            const nextIndex = Math.max(state.activeAccountIndex - 1, 0);
+            updateActiveAccountSuggestion(nextIndex);
+            return;
+          }
+
+          if (event.key === "Enter" && state.activeAccountIndex >= 0) {
+            event.preventDefault();
+            state.account = state.accountSuggestions[state.activeAccountIndex] || "";
+            syncAccountFilterInput();
+            closeAccountSuggestions();
+            applyFilters();
+            return;
+          }
+
+          if (event.key === "Escape") {
+            closeAccountSuggestions();
+          }
+        });
+        accountFilter.addEventListener("change", updateAccountFilter);
+        accountFilter.addEventListener("blur", () => {
+          window.setTimeout(() => updateAccountFilter({ target: accountFilter }), 0);
         });
       }
+
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".combo-filter")) {
+          closeAccountSuggestions();
+        }
+      });
 
       const dateFrom = document.getElementById("date-from");
       if (dateFrom) {
@@ -770,7 +937,7 @@ const ArchiveViewer = (() => {
           state.dateTo = "";
           state.activeFilter = "all";
           document.getElementById("tweet-filter").value = "";
-          document.getElementById("account-filter").value = "";
+          syncAccountFilterInput();
           document.getElementById("date-from").value = "";
           document.getElementById("date-to").value = "";
           applyFilters();

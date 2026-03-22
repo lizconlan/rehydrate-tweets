@@ -25,9 +25,20 @@
         <div class="filter-grid">
           <div>
             <label for="account-filter" class="eyebrow">Account</label>
-            <select id="account-filter" class="filter-input filter-select">
-              <option value="">All accounts</option>
-            </select>
+            <div class="combo-filter">
+              <input
+                id="account-filter"
+                class="filter-input"
+                type="text"
+                placeholder="All accounts"
+                autocomplete="off"
+                spellcheck="false"
+                aria-autocomplete="list"
+                aria-expanded="false"
+                aria-controls="account-filter-options"
+              >
+              <div id="account-filter-options" class="combo-filter-menu" role="listbox"></div>
+            </div>
           </div>
           <div>
             <label for="date-from" class="eyebrow">From</label>

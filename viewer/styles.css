@@ -241,8 +241,52 @@ a {
   margin-top: 14px;
 }
 
-.filter-select {
-  appearance: none;
+.combo-filter {
+  position: relative;
+}
+
+.combo-filter-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: none;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 252, 247, 0.98);
+  box-shadow: 0 16px 40px rgba(49, 39, 29, 0.14);
+}
+
+.combo-filter-menu.is-open {
+  display: grid;
+  gap: 4px;
+}
+
+.combo-filter-option {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.combo-filter-option:hover,
+.combo-filter-option.is-active {
+  background: var(--twitter-blue-soft);
+}
+
+.combo-filter-empty {
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .filter-actions {
