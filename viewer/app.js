@@ -4,6 +4,7 @@ const ArchiveViewer = (() => {
     selectedId: null,
     query: "",
     activeFilter: "all",
+    page: 1,
     account: "",
     accounts: [],
     accountSuggestions: [],
@@ -11,6 +12,7 @@ const ArchiveViewer = (() => {
     dateFrom: "",
     dateTo: "",
   };
+  const PAGE_SIZE = 25;
   const FILTERS = [
     { id: "all", label: "All", predicate: () => true },
     { id: "media", label: "Media", predicate: (tweet) => (tweet.media_count || 0) > 0 },
@@ -153,13 +155,18 @@ const ArchiveViewer = (() => {
     return new URLSearchParams(window.location.search).get(name);
   }
 
+  function getPageParam() {
+    const raw = Number.parseInt(getParam("page") || "1", 10);
+    return Number.isFinite(raw) && raw > 0 ? raw : 1;
+  }
+
   function archiveBaseUrl() {
     const current = new URL(window.location.href);
     const archivePath = current.pathname.replace(/\/tweet\.html$/, "/index.html");
     return new URL(archivePath || "index.html", current);
   }
 
-  function archiveUrlForAccount(account, tweetId = "") {
+  function archiveUrlForAccount(account, tweetId = "", page = state.page) {
     const url = archiveBaseUrl();
     const normalizedAccount = normalizeAccountInput(account, true);
 
@@ -175,6 +182,12 @@ const ArchiveViewer = (() => {
       url.searchParams.delete("tweet_id");
     }
 
+    if (page > 1) {
+      url.searchParams.set("page", String(page));
+    } else {
+      url.searchParams.delete("page");
+    }
+
     return url.toString();
   }
 
@@ -183,7 +196,7 @@ const ArchiveViewer = (() => {
       return;
     }
 
-    window.history.replaceState({}, "", archiveUrlForAccount(state.account, tweetId));
+    window.history.replaceState({}, "", archiveUrlForAccount(state.account, tweetId, state.page));
   }
 
   function localAssetPath(assetPath) {
@@ -493,26 +506,85 @@ const ArchiveViewer = (() => {
     host.querySelectorAll(".filter-chip").forEach((button) => {
       button.addEventListener("click", () => {
         state.activeFilter = button.dataset.filterId;
+        state.page = 1;
         applyFilters();
       });
     });
   }
 
-  function renderResultsMeta(tweets) {
+  function pageCount(totalTweets) {
+    return Math.max(1, Math.ceil(totalTweets / PAGE_SIZE));
+  }
+
+  function clampPage(page, totalTweets) {
+    return Math.min(Math.max(page, 1), pageCount(totalTweets));
+  }
+
+  function currentPageSlice(tweets) {
+    const safePage = clampPage(state.page, tweets.length);
+    if (safePage !== state.page) {
+      state.page = safePage;
+    }
+
+    const start = tweets.length ? (safePage - 1) * PAGE_SIZE : 0;
+    const end = Math.min(start + PAGE_SIZE, tweets.length);
+
+    return {
+      pageTweets: tweets.slice(start, end),
+      start,
+      end,
+      total: tweets.length,
+      page: safePage,
+      pages: pageCount(tweets.length),
+      newestTimestamp: tweets[0]?.timestamp || "",
+    };
+  }
+
+  function renderResultsMeta(view) {
     const meta = document.getElementById("results-meta");
     if (!meta) {
       return;
     }
 
     const filterLabel = currentFilter().label;
-    const selectionDate = tweets[0] ? formatShortDate(tweets[0].timestamp) : "";
+    const selectionDate = view.total ? formatShortDate(view.newestTimestamp) : "";
     const accountLabel = state.account ? ` · @${state.account}` : "";
     const dateLabel = state.dateFrom || state.dateTo
       ? ` · ${state.dateFrom || "start"} to ${state.dateTo || "now"}`
       : "";
-    meta.textContent = tweets.length
-      ? `${tweets.length} ${filterLabel.toLowerCase()} result${tweets.length === 1 ? "" : "s"}${accountLabel}${dateLabel}${selectionDate ? ` · newest ${selectionDate}` : ""}`
+    meta.textContent = view.total
+      ? `${filterLabel} · ${view.total} result${view.total === 1 ? "" : "s"}${accountLabel}${dateLabel}${selectionDate ? ` · newest ${selectionDate}` : ""}`
       : "No tweets match the current filters";
+  }
+
+  function renderPaginationControls(view) {
+    const host = document.getElementById("pagination-controls");
+    if (!host) {
+      return;
+    }
+
+    if (!view.total) {
+      host.innerHTML = "";
+      return;
+    }
+
+    const previousDisabled = view.page <= 1 ? "disabled" : "";
+    const nextDisabled = view.page >= view.pages ? "disabled" : "";
+
+    host.innerHTML = `
+      <span class="pagination-range">${view.start + 1}-${view.end} of ${view.total}</span>
+      <button class="pagination-button" type="button" data-page-direction="prev" ${previousDisabled} aria-label="Previous page">‹</button>
+      <button class="pagination-button" type="button" data-page-direction="next" ${nextDisabled} aria-label="Next page">›</button>
+    `;
+
+    host.querySelectorAll("[data-page-direction]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextPage = button.dataset.pageDirection === "prev" ? state.page - 1 : state.page + 1;
+        state.page = clampPage(nextPage, view.total);
+        applyFilters();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
   }
 
   function renderMedia(media = []) {
@@ -844,12 +916,14 @@ const ArchiveViewer = (() => {
       return;
     }
 
-    if (!tweets.length) {
+    const view = currentPageSlice(tweets);
+
+    if (!view.total) {
       list.innerHTML = '<div class="empty-state">No local hydrated tweets matched that search.</div>';
-      return;
+      return view;
     }
 
-    list.innerHTML = tweets.map((tweet) => renderTimelineTweet(tweet)).join("");
+    list.innerHTML = view.pageTweets.map((tweet) => renderTimelineTweet(tweet)).join("");
 
     list.querySelectorAll("[data-tweet-id]").forEach((button) => {
       button.addEventListener("click", () => selectTweet(button.dataset.tweetId));
@@ -857,18 +931,21 @@ const ArchiveViewer = (() => {
 
     updateSelectedListItem();
     activateFallbacks(list);
+    return view;
   }
 
   function applyFilter(query) {
     state.query = query;
+    state.page = 1;
     applyFilters();
   }
 
   function applyFilters() {
     const filtered = filteredTweets();
-    renderList(filtered);
+    const view = renderList(filtered);
     renderFilterChips();
-    renderResultsMeta(filtered);
+    renderResultsMeta(view);
+    renderPaginationControls(view);
 
     if (!filtered.length) {
       state.selectedId = null;
@@ -876,24 +953,39 @@ const ArchiveViewer = (() => {
       return;
     }
 
-    if (!filtered.some((tweet) => tweet.id === state.selectedId) && filtered[0]) {
-      selectTweet(filtered[0].id, false);
-      syncArchiveUrl(filtered[0].id);
+    const currentPageIds = new Set(view.pageTweets.map((tweet) => tweet.id));
+    const nextSelectedId = currentPageIds.has(state.selectedId) ? state.selectedId : view.pageTweets[0]?.id;
+
+    if (nextSelectedId && nextSelectedId !== state.selectedId) {
+      selectTweet(nextSelectedId, false);
+      syncArchiveUrl(nextSelectedId);
       return;
     }
 
-    syncArchiveUrl(state.selectedId);
+    syncArchiveUrl(nextSelectedId || state.selectedId);
   }
 
   async function initArchivePage() {
     try {
       const manifestData = await fetchJson("downloads/index.json");
       state.manifest = manifestData.tweets || [];
+      state.page = getPageParam();
       state.account = normalizeAccountInput(getParam("account"), true);
       setStatus(`${state.manifest.length} archived tweets loaded`);
       renderArchiveSummary();
       populateAccountFilter();
       renderFilterChips();
+
+      const requestedId = getParam("tweet_id");
+      if (requestedId) {
+        const initialFiltered = filteredTweets();
+        const requestedIndex = initialFiltered.findIndex((tweet) => tweet.id === requestedId);
+        if (requestedIndex >= 0) {
+          state.page = Math.floor(requestedIndex / PAGE_SIZE) + 1;
+          state.selectedId = requestedId;
+        }
+      }
+
       applyFilters();
 
       const filterInput = document.getElementById("tweet-filter");
@@ -905,6 +997,7 @@ const ArchiveViewer = (() => {
       if (accountFilter) {
         const updateAccountFilter = (event) => {
           state.account = normalizeAccountInput(event.target.value);
+          state.page = 1;
           syncAccountFilterInput();
           closeAccountSuggestions();
           applyFilters();
@@ -967,6 +1060,7 @@ const ArchiveViewer = (() => {
       if (dateFrom) {
         dateFrom.addEventListener("change", (event) => {
           state.dateFrom = event.target.value;
+          state.page = 1;
           applyFilters();
         });
       }
@@ -975,6 +1069,7 @@ const ArchiveViewer = (() => {
       if (dateTo) {
         dateTo.addEventListener("change", (event) => {
           state.dateTo = event.target.value;
+          state.page = 1;
           applyFilters();
         });
       }
@@ -987,6 +1082,7 @@ const ArchiveViewer = (() => {
           state.dateFrom = "";
           state.dateTo = "";
           state.activeFilter = "all";
+          state.page = 1;
           document.getElementById("tweet-filter").value = "";
           syncAccountFilterInput();
           document.getElementById("date-from").value = "";
@@ -995,11 +1091,6 @@ const ArchiveViewer = (() => {
         });
       }
 
-      const requestedId = getParam("tweet_id");
-      const initialTweet = state.manifest.find((tweet) => tweet.id === requestedId) || state.manifest[0];
-      if (initialTweet) {
-        selectTweet(initialTweet.id, false);
-      }
     } catch (error) {
       setStatus(error.message);
       renderList([]);

@@ -206,6 +206,12 @@ a {
   border-bottom: 1px solid rgba(95, 99, 104, 0.12);
 }
 
+.timeline-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .detail-panel {
   padding: 18px 20px 24px;
   background: rgba(255, 255, 255, 0.88);
@@ -434,6 +440,44 @@ a {
   font-size: 0.9rem;
   text-align: right;
   line-height: 1.35;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-range {
+  color: var(--muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.pagination-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(95, 99, 104, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.pagination-button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .tweet-timeline {
@@ -694,6 +738,20 @@ a {
   text-decoration: underline;
 }
 
+.timeline-tweet .media-grid {
+  margin-top: 14px;
+}
+
+.timeline-tweet .media-card {
+  max-width: min(100%, 525px);
+  border-radius: 18px;
+}
+
+.timeline-tweet .media-image,
+.timeline-tweet .media-video {
+  max-height: 400px;
+}
+
 .tweet-footer {
   display: flex;
   flex-wrap: wrap;
@@ -825,6 +883,11 @@ a {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .timeline-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 @media (max-width: 640px) {
@@ -851,5 +914,11 @@ a {
 
   .timeline-badges {
     margin-left: 0;
+  }
+
+  .timeline-header-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 }

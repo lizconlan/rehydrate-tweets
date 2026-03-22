@@ -78,6 +78,16 @@ def summarize_tweet(tweet, source_path):
             "profile_image_s3": author.get("profile_image_s3", ""),
             "profile_image_url": author.get("profile_image_url", ""),
         },
+        "media": [
+            {
+                "alt_text": item.get("alt_text"),
+                "media_key": item.get("media_key", ""),
+                "type": item.get("type", ""),
+                "url": item.get("url", ""),
+                "s3_url": item.get("s3_url", ""),
+            }
+            for item in media
+        ],
         "media_count": len(media),
         "has_video": any(item.get("type") == "video" for item in media),
         "json_path": f"downloads/{tweet['id']}.json",
