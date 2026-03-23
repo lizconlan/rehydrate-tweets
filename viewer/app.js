@@ -12,6 +12,11 @@ const ArchiveViewer = (() => {
     dateFrom: "",
     dateTo: "",
   };
+  const lightbox = {
+    host: null,
+    preview: null,
+    activeSrc: "",
+  };
   const PAGE_SIZE = 25;
   const FILTERS = [
     { id: "all", label: "All", predicate: () => true },
@@ -618,7 +623,7 @@ const ArchiveViewer = (() => {
 
         return `
           <figure class="media-card">
-            <img class="media-image" src="${escapeHtml(src)}" alt="${alt}" data-fallbacks="${encodedFallbacks(candidates)}">
+            <img class="media-image" src="${escapeHtml(src)}" alt="${alt}" data-fallbacks="${encodedFallbacks(candidates)}" data-lightbox-src="${escapeHtml(src)}">
           </figure>
         `;
       })
@@ -836,6 +841,7 @@ const ArchiveViewer = (() => {
 
     panel.innerHTML = renderSelectionSummary(tweet);
     activateFallbacks(panel);
+    attachMediaLightbox(panel);
   }
 
   function nextFallback(node, applySource) {
@@ -855,6 +861,9 @@ const ArchiveViewer = (() => {
       node.addEventListener("error", () => {
         nextFallback(node, (next) => {
           node.src = next;
+          if (node.dataset.lightboxSrc !== undefined) {
+            node.dataset.lightboxSrc = next;
+          }
         });
       });
     });
@@ -872,6 +881,100 @@ const ArchiveViewer = (() => {
           node.load();
         });
       });
+    });
+  }
+
+  function closeLightbox() {
+    if (!lightbox.host || lightbox.host.hidden) {
+      return;
+    }
+
+    lightbox.host.hidden = true;
+    lightbox.host.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("lightbox-open");
+    lightbox.activeSrc = "";
+
+    if (lightbox.preview) {
+      lightbox.preview.removeAttribute("src");
+      lightbox.preview.alt = "";
+    }
+  }
+
+  function openLightbox(src, alt) {
+    if (!lightbox.host || !lightbox.preview || !src) {
+      return;
+    }
+
+    if (!lightbox.host.hidden && lightbox.activeSrc === src) {
+      closeLightbox();
+      return;
+    }
+
+    lightbox.preview.src = src;
+    lightbox.preview.alt = alt || "Full size tweet image";
+    lightbox.host.hidden = false;
+    lightbox.host.setAttribute("aria-hidden", "false");
+    document.body.classList.add("lightbox-open");
+    lightbox.activeSrc = src;
+  }
+
+  function attachMediaLightbox(scope) {
+    scope.querySelectorAll("img[data-lightbox-src]").forEach((node) => {
+      if (node.dataset.lightboxBound === "true") {
+        return;
+      }
+
+      node.dataset.lightboxBound = "true";
+      node.setAttribute("role", "button");
+      node.setAttribute("tabindex", "0");
+      node.setAttribute("aria-label", `${node.alt || "Tweet image"}. Open full size view`);
+
+      const previewImage = () => {
+        const src = node.currentSrc || node.dataset.lightboxSrc || node.src;
+        openLightbox(src, node.alt);
+      };
+
+      node.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        previewImage();
+      });
+
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          previewImage();
+        }
+      });
+    });
+  }
+
+  function initLightbox() {
+    lightbox.host = document.getElementById("image-lightbox");
+    lightbox.preview = document.getElementById("image-lightbox-preview");
+
+    if (!lightbox.host || !lightbox.preview || lightbox.host.dataset.initialized === "true") {
+      return;
+    }
+
+    lightbox.host.dataset.initialized = "true";
+
+    lightbox.host.addEventListener("click", (event) => {
+      if (event.target === lightbox.preview) {
+        closeLightbox();
+        return;
+      }
+
+      if (event.target.closest("[data-lightbox-close='true']") || event.target === lightbox.host) {
+        closeLightbox();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeLightbox();
+      }
     });
   }
 
@@ -931,6 +1034,7 @@ const ArchiveViewer = (() => {
 
     updateSelectedListItem();
     activateFallbacks(list);
+    attachMediaLightbox(list);
     return view;
   }
 
@@ -1123,6 +1227,7 @@ const ArchiveViewer = (() => {
       const tweet = await fetchJson(`downloads/${tweetId}.json`);
       panel.innerHTML = renderTweet(tweet);
       activateFallbacks(panel);
+      attachMediaLightbox(panel);
       setStatus(`Viewing tweet ${tweetId}`);
     } catch (error) {
       panel.innerHTML = renderTweet({
@@ -1137,6 +1242,8 @@ const ArchiveViewer = (() => {
   }
 
   async function init() {
+    initLightbox();
+
     const mode = document.body.dataset.mode || "archive";
     if (mode === "single") {
       await initSingleTweetPage();
