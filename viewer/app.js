@@ -204,6 +204,15 @@ const ArchiveViewer = (() => {
     window.history.replaceState({}, "", archiveUrlForAccount(state.account, tweetId, state.page));
   }
 
+  function scrollArchiveResultsToTop() {
+    const timeline = document.getElementById("tweet-list");
+    if (timeline) {
+      timeline.scrollTo({ top: 0, behavior: "auto" });
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function localAssetPath(assetPath) {
     if (!assetPath) {
       return "";
@@ -587,7 +596,7 @@ const ArchiveViewer = (() => {
         const nextPage = button.dataset.pageDirection === "prev" ? state.page - 1 : state.page + 1;
         state.page = clampPage(nextPage, view.total);
         applyFilters();
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        scrollArchiveResultsToTop();
       });
     });
   }
