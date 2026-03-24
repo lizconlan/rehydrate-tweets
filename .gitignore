@@ -2,8 +2,7 @@
 **/.DS_Store
 tmp/
 tmp/zips/*.zip
-viewer/downloads/
-viewer/downloads/index.json
+viewer/downloads/*
 layers/python/
 athena/
 lambdas*

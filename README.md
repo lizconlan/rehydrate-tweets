@@ -68,6 +68,8 @@ Run:
 
 This scans the repo for tweet-shaped JSON, normalises it for the viewer, and writes the browser-ready data into `viewer/downloads/`.
 
+If you know about a few reply relationships that are missing from older hydrated tweets, you can add them to `viewer/thread_overrides.json` before rebuilding. The build step will merge those known `in_reply_to_*` values into the generated viewer cache.
+
 ### Launch the archive viewer
 
 Run:

@@ -11,6 +11,36 @@ from json import JSONDecodeError
 
 S3 = boto3.client("s3")
 
+
+def reply_fields(tweet, users):
+    replied_to = None
+    referenced_tweets = getattr(tweet, "referenced_tweets", None) or []
+    for reference in referenced_tweets:
+        if getattr(reference, "type", "") == "replied_to":
+            replied_to = str(reference.id)
+            break
+
+    in_reply_to_user_id = getattr(tweet, "in_reply_to_user_id", None)
+    in_reply_to_user_id = str(in_reply_to_user_id) if in_reply_to_user_id else ""
+
+    in_reply_to_screen_name = ""
+    if in_reply_to_user_id:
+        for user in users or []:
+            if str(user.id) == in_reply_to_user_id:
+                in_reply_to_screen_name = user.username
+                break
+
+    conversation_id = getattr(tweet, "conversation_id", None)
+
+    return {
+        "conversation_id": str(conversation_id) if conversation_id else "",
+        "in_reply_to_status_id": replied_to or "",
+        "in_reply_to_status_id_str": replied_to or "",
+        "in_reply_to_user_id": in_reply_to_user_id,
+        "in_reply_to_user_id_str": in_reply_to_user_id,
+        "in_reply_to_screen_name": in_reply_to_screen_name,
+    }
+
 def lambda_handler(event, context):
     event_body = load_body_data(event)
 
@@ -25,8 +55,8 @@ def lambda_handler(event, context):
     client = tweepy.Client(get_secret()["token"])
 
     response = client.get_tweet(tweet_id,
-                                expansions=["author_id", "entities.mentions.username", "attachments.media_keys"],
-                                tweet_fields=["created_at", "entities"],
+                                expansions=["author_id", "entities.mentions.username", "attachments.media_keys", "in_reply_to_user_id"],
+                                tweet_fields=["created_at", "entities", "conversation_id", "in_reply_to_user_id", "referenced_tweets"],
                                 user_fields=["username", "verified", "protected", "description", "name", "profile_image_url"],
                                 media_fields=["alt_text", "url", "variants"])
 
@@ -73,6 +103,7 @@ def lambda_handler(event, context):
         "external_links": links,
         "mentions": others
     }
+    data.update(reply_fields(tweet, response.includes.get("users", [])))
 
     try:
         response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], "raw_data/" + tweet_id + ".json")
@@ -127,8 +158,8 @@ def save_linked_tweets(link_data):
             tweet_id = item["expanded_url"].split("/")[-1]
 
             response = client.get_tweet(tweet_id,
-                            expansions=["author_id", "entities.mentions.username", "attachments.media_keys"],
-                            tweet_fields=["created_at", "entities"],
+                            expansions=["author_id", "entities.mentions.username", "attachments.media_keys", "in_reply_to_user_id"],
+                            tweet_fields=["created_at", "entities", "conversation_id", "in_reply_to_user_id", "referenced_tweets"],
                             user_fields=["username", "verified", "protected", "description", "name"],
                             media_fields=["alt_text", "url"])
 
@@ -171,6 +202,7 @@ def save_linked_tweets(link_data):
                 "external_links": links,
                 "mentions": others
             }
+            data.update(reply_fields(tweet, response.includes.get("users", [])))
 
             try:
                 response = S3.upload_fileobj(io.BytesIO(json.dumps(data).encode("utf-8")), os.environ["target_bucket"], "linked_tweets/" + tweet_id + ".json")

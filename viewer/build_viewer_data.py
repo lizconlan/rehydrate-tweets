@@ -15,6 +15,7 @@ MANAGED_DIR = DOWNLOADS_DIR / "managed"
 MANAGED_RAW_DATA_DIR = MANAGED_DIR / "raw_data"
 MANAGED_LIKED_MEDIA_DIR = MANAGED_DIR / "liked_media"
 MANAGED_PROFILE_IMAGES_DIR = MANAGED_DIR / "profile_images"
+THREAD_OVERRIDES_PATH = VIEWER_DIR / "thread_overrides.json"
 
 IGNORED_DIRS = {
     ".git",
@@ -69,7 +70,13 @@ def summarize_tweet(tweet, source_path):
         "text": tweet.get("text", ""),
         "text_preview": text[:180] + ("..." if len(text) > 180 else ""),
         "timestamp": tweet.get("timestamp", ""),
+        "conversation_id": tweet.get("conversation_id", ""),
         "direct_link": tweet.get("direct_link", ""),
+        "in_reply_to_status_id": tweet.get("in_reply_to_status_id", ""),
+        "in_reply_to_status_id_str": tweet.get("in_reply_to_status_id_str", ""),
+        "in_reply_to_user_id": tweet.get("in_reply_to_user_id", ""),
+        "in_reply_to_user_id_str": tweet.get("in_reply_to_user_id_str", ""),
+        "in_reply_to_screen_name": tweet.get("in_reply_to_screen_name", ""),
         "author": {
             "id": str(author.get("id", "")),
             "username": author.get("username", ""),
@@ -153,7 +160,72 @@ def infer_media_s3_url(tweet_id, media_item):
     return ""
 
 
-def normalize_tweet(tweet):
+def normalize_optional_string(value):
+    normalized = str(value or "").strip()
+    return normalized if normalized and normalized.lower() not in {"none", "null"} else ""
+
+
+def load_thread_overrides():
+    if not THREAD_OVERRIDES_PATH.exists():
+        return {}
+
+    try:
+        payload = json.loads(THREAD_OVERRIDES_PATH.read_text())
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return {}
+
+    raw_overrides = payload.get("overrides")
+    if not isinstance(raw_overrides, dict):
+        return {}
+
+    normalized = {}
+    for tweet_id, data in raw_overrides.items():
+        if not isinstance(data, dict):
+            continue
+
+        normalized_tweet_id = normalize_optional_string(tweet_id)
+        if not normalized_tweet_id:
+            continue
+
+        parent_id = normalize_optional_string(
+            data.get("in_reply_to_status_id") or data.get("parent_tweet_id")
+        )
+        user_id = normalize_optional_string(data.get("in_reply_to_user_id"))
+        screen_name = normalize_optional_string(data.get("in_reply_to_screen_name")).lstrip("@")
+        conversation_id = normalize_optional_string(data.get("conversation_id"))
+
+        if not parent_id and not user_id and not screen_name and not conversation_id:
+            continue
+
+        normalized[normalized_tweet_id] = {
+            "conversation_id": conversation_id,
+            "in_reply_to_status_id": parent_id,
+            "in_reply_to_status_id_str": parent_id,
+            "in_reply_to_user_id": user_id,
+            "in_reply_to_user_id_str": user_id,
+            "in_reply_to_screen_name": screen_name,
+        }
+
+    return normalized
+
+
+def apply_thread_override(tweet, overrides):
+    tweet_id = normalize_optional_string(tweet.get("id"))
+    if not tweet_id:
+        return tweet
+
+    override = overrides.get(tweet_id)
+    if not override:
+        return tweet
+
+    for key, value in override.items():
+        if value:
+            tweet[key] = value
+
+    return tweet
+
+
+def normalize_tweet(tweet, thread_overrides=None):
     normalized = json.loads(json.dumps(tweet))
     tweet_id = str(normalized.get("id", ""))
     author = normalized.get("author") or {}
@@ -174,6 +246,7 @@ def normalize_tweet(tweet):
         if inferred_media:
             item["s3_url"] = inferred_media
 
+    normalized = apply_thread_override(normalized, thread_overrides or {})
     normalized["author"] = author
     normalized["media"] = media
     return normalized
@@ -208,11 +281,12 @@ def build_manifest():
     DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
     tweets = discover_hydrated_tweets()
+    thread_overrides = load_thread_overrides()
     manifest = []
 
     for tweet_id, item in tweets.items():
         destination = DOWNLOADS_DIR / f"{tweet_id}.json"
-        normalized_tweet = normalize_tweet(item["tweet"])
+        normalized_tweet = normalize_tweet(item["tweet"], thread_overrides)
         normalized_tweet["_viewer_source_kind"] = "managed" if MANAGED_DIR in item["path"].parents else "cache"
         destination.write_text(json.dumps(normalized_tweet, indent=2))
 

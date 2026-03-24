@@ -1,6 +1,8 @@
 const ArchiveViewer = (() => {
   const state = {
     manifest: [],
+    manifestIds: new Set(),
+    repliesByParentId: new Map(),
     selectedId: null,
     query: "",
     activeFilter: "all",
@@ -287,6 +289,152 @@ const ArchiveViewer = (() => {
     return parsed.toLocaleDateString(undefined, {
       dateStyle: "medium",
     });
+  }
+
+  function normalizeTweetId(value) {
+    const normalized = String(value ?? "").trim();
+    return normalized && normalized !== "None" && normalized !== "null" ? normalized : "";
+  }
+
+  function getReplyTarget(tweet) {
+    const id = normalizeTweetId(tweet?.in_reply_to_status_id || tweet?.in_reply_to_status_id_str);
+    const username = String(tweet?.in_reply_to_screen_name || "").trim().replace(/^@+/, "");
+    const userId = normalizeTweetId(tweet?.in_reply_to_user_id || tweet?.in_reply_to_user_id_str);
+
+    if (!id && !username && !userId) {
+      return null;
+    }
+
+    return { id, username, userId };
+  }
+
+  function hasLocalTweet(tweetId) {
+    return Boolean(tweetId) && state.manifestIds.has(tweetId);
+  }
+
+  function buildReplyIndex(tweets) {
+    const repliesByParentId = new Map();
+
+    tweets.forEach((tweet) => {
+      const replyTarget = getReplyTarget(tweet);
+      if (!replyTarget?.id) {
+        return;
+      }
+
+      const bucket = repliesByParentId.get(replyTarget.id) || [];
+      bucket.push(tweet);
+      repliesByParentId.set(replyTarget.id, bucket);
+    });
+
+    return repliesByParentId;
+  }
+
+  function localRepliesFor(tweetId) {
+    return state.repliesByParentId.get(normalizeTweetId(tweetId)) || [];
+  }
+
+  function directTweetUrl(tweetId, username = "") {
+    const normalizedId = normalizeTweetId(tweetId);
+    const normalizedUser = String(username || "").trim().replace(/^@+/, "");
+
+    if (!normalizedId) {
+      return normalizedUser ? `https://twitter.com/${normalizedUser}` : "#";
+    }
+
+    if (normalizedUser) {
+      return `https://twitter.com/${normalizedUser}/status/${normalizedId}`;
+    }
+
+    return `https://twitter.com/i/web/status/${normalizedId}`;
+  }
+
+  function localTweetUrl(tweetId, username = "") {
+    const normalizedId = normalizeTweetId(tweetId);
+    if (!normalizedId) {
+      return "#";
+    }
+
+    if (document.body.dataset.mode === "single") {
+      return `tweet.html?tweet_id=${encodeURIComponent(normalizedId)}`;
+    }
+
+    return archiveUrlForAccount(username, normalizedId);
+  }
+
+  function renderReplyContext(tweet) {
+    const replyTarget = getReplyTarget(tweet);
+    if (!replyTarget) {
+      return "";
+    }
+
+    const { id, username, userId } = replyTarget;
+    const hasLocalParent = hasLocalTweet(id);
+    const localUrl = hasLocalParent ? localTweetUrl(id, username) : "";
+    const originalUrl = directTweetUrl(id, username);
+    const targetLabel = username ? `@${escapeHtml(username)}` : "unknown account";
+    const idLabel = id ? escapeHtml(id) : "unknown tweet id";
+    const userIdLine = userId ? `<li>User id: ${escapeHtml(userId)}</li>` : "";
+
+    return `
+      <section class="meta-block">
+        <h3>Thread</h3>
+        <ul class="meta-list">
+          <li>In reply to ${targetLabel}</li>
+          <li>Parent tweet id: ${idLabel}</li>
+          ${userIdLine}
+          <li>
+            ${hasLocalParent
+              ? `<a href="${escapeHtml(localUrl)}">Open parent in archive</a>`
+              : "Parent tweet is not in the local archive"}
+          </li>
+          ${id ? `<li><a href="${escapeHtml(originalUrl)}" target="_blank" rel="noreferrer">Open parent on Twitter</a></li>` : ""}
+        </ul>
+      </section>
+    `;
+  }
+
+  function renderTimelineReplyHint(tweet) {
+    const replyTarget = getReplyTarget(tweet);
+    if (!replyTarget?.id) {
+      return "";
+    }
+
+    const handle = replyTarget.username ? `@${escapeHtml(replyTarget.username)}` : "archived parent";
+    const localUrl = localTweetUrl(replyTarget.id, replyTarget.username);
+    const localLabel = hasLocalTweet(replyTarget.id) ? "Open parent in archive" : "Open parent lookup";
+
+    return `
+      <div class="timeline-thread-hint">
+        <span class="timeline-thread-label">Reply to ${handle}</span>
+        <a class="timeline-thread-link" href="${escapeHtml(localUrl)}">${localLabel}</a>
+      </div>
+    `;
+  }
+
+  function renderTimelineChildReplies(tweet) {
+    const replies = localRepliesFor(tweet.id);
+    if (!replies.length) {
+      return "";
+    }
+
+    const links = replies
+      .slice(0, 3)
+      .map((reply) => {
+        const author = reply.author || {};
+        const label = author.username ? `@${escapeHtml(author.username)}` : escapeHtml(String(reply.id));
+        return `<a class="timeline-thread-link" href="${escapeHtml(localTweetUrl(reply.id, author.username || ""))}">${label}</a>`;
+      })
+      .join("");
+    const remainder = replies.length > 3
+      ? `<span class="timeline-thread-more">+${replies.length - 3} more</span>`
+      : "";
+
+    return `
+      <div class="timeline-thread-hint timeline-thread-hint--children">
+        <span class="timeline-thread-label">Replies in archive</span>
+        <span class="timeline-thread-links">${links}${remainder}</span>
+      </div>
+    `;
   }
 
   function currentFilter() {
@@ -715,6 +863,7 @@ const ArchiveViewer = (() => {
           <span>${(tweet.media || []).length} media item${(tweet.media || []).length === 1 ? "" : "s"}</span>
         </footer>
         <div class="tweet-meta">
+          ${renderReplyContext(tweet)}
           ${renderLinks(tweet.external_links)}
           ${renderMentions(tweet.mentions)}
         </div>
@@ -730,6 +879,12 @@ const ArchiveViewer = (() => {
     const mediaCount = (tweet.media || []).length;
     const externalLinkCount = (tweet.external_links || []).length;
     const mentionCount = (tweet.mentions || []).length;
+    const replyTarget = getReplyTarget(tweet);
+    const replyLabel = replyTarget?.username
+      ? `@${replyTarget.username}`
+      : replyTarget?.id
+        ? replyTarget.id
+        : "No";
 
     return `
       <section class="selection-card">
@@ -751,6 +906,10 @@ const ArchiveViewer = (() => {
         <div class="selection-row">
           <span class="selection-label">Tweet id</span>
           <span class="selection-value">${escapeHtml(String(tweet.id || ""))}</span>
+        </div>
+        <div class="selection-row">
+          <span class="selection-label">Reply</span>
+          <span class="selection-value">${escapeHtml(replyLabel)}</span>
         </div>
         <div class="selection-grid">
           <div class="selection-pill">
@@ -774,6 +933,7 @@ const ArchiveViewer = (() => {
           <a class="tweet-link" href="${escapeHtml(profileUrl)}" target="_blank" rel="noreferrer">Open profile</a>
           <a class="tweet-link" href="${escapeHtml(tweetUrl)}" target="_blank" rel="noreferrer">Open original</a>
         </div>
+        ${renderReplyContext(tweet)}
       </section>
     `;
   }
@@ -798,6 +958,12 @@ const ArchiveViewer = (() => {
     } else if ((tweet.media_count || 0) > 0) {
       badges.push(`<span class="tweet-list-badge">${tweet.media_count} media</span>`);
     }
+    if (getReplyTarget(tweet)?.id) {
+      badges.push('<span class="tweet-list-badge">Reply</span>');
+    }
+    if (localRepliesFor(tweet.id).length) {
+      badges.push('<span class="tweet-list-badge">Has replies</span>');
+    }
 
     return `
       <article class="timeline-tweet ${tweet.id === state.selectedId ? "is-selected" : ""}" data-tweet-id="${escapeHtml(tweet.id)}">
@@ -817,6 +983,8 @@ const ArchiveViewer = (() => {
           </header>
           <button class="timeline-open" data-tweet-id="${escapeHtml(tweet.id)}" type="button">
             <p class="timeline-text">${formatTweetText(tweet.text || "", tweet.external_links || [])}</p>
+            ${renderTimelineReplyHint(tweet)}
+            ${renderTimelineChildReplies(tweet)}
             ${renderMedia(tweet.media)}
           </button>
           <footer class="timeline-footer">
@@ -993,6 +1161,19 @@ const ArchiveViewer = (() => {
     });
   }
 
+  function scrollSelectedListItemIntoView() {
+    const selected = document.querySelector(`.timeline-tweet[data-tweet-id="${CSS.escape(state.selectedId || "")}"]`);
+    if (!selected) {
+      return;
+    }
+
+    selected.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "auto",
+    });
+  }
+
   async function selectTweet(tweetId, pushHistory = true) {
     if (!tweetId) {
       return;
@@ -1000,6 +1181,7 @@ const ArchiveViewer = (() => {
 
     state.selectedId = tweetId;
     updateSelectedListItem();
+    scrollSelectedListItemIntoView();
     setStatus("Loading tweet...");
 
     try {
@@ -1042,6 +1224,7 @@ const ArchiveViewer = (() => {
     });
 
     updateSelectedListItem();
+    scrollSelectedListItemIntoView();
     activateFallbacks(list);
     attachMediaLightbox(list);
     return view;
@@ -1082,6 +1265,8 @@ const ArchiveViewer = (() => {
     try {
       const manifestData = await fetchJson("downloads/index.json");
       state.manifest = manifestData.tweets || [];
+      state.manifestIds = new Set(state.manifest.map((tweet) => normalizeTweetId(tweet.id)).filter(Boolean));
+      state.repliesByParentId = buildReplyIndex(state.manifest);
       state.page = getPageParam();
       state.account = normalizeAccountInput(getParam("account"), true);
       setStatus(`${state.manifest.length} archived tweets loaded`);
@@ -1233,6 +1418,17 @@ const ArchiveViewer = (() => {
     }
 
     try {
+      try {
+        const manifestData = await fetchJson("downloads/index.json");
+        state.manifest = manifestData.tweets || [];
+        state.manifestIds = new Set(state.manifest.map((tweet) => normalizeTweetId(tweet.id)).filter(Boolean));
+        state.repliesByParentId = buildReplyIndex(state.manifest);
+      } catch (manifestError) {
+        state.manifest = [];
+        state.manifestIds = new Set();
+        state.repliesByParentId = new Map();
+      }
+
       const tweet = await fetchJson(`downloads/${tweetId}.json`);
       panel.innerHTML = renderTweet(tweet);
       activateFallbacks(panel);
