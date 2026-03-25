@@ -624,12 +624,33 @@ const ArchiveViewer = (() => {
       return;
     }
 
+    const activeAccountProfile = state.account
+      ? state.manifest.find((tweet) => tweet.author?.username === state.account)?.author || null
+      : null;
     const total = state.manifest.length;
     const withMedia = state.manifest.filter((tweet) => (tweet.media_count || 0) > 0).length;
     const withVideo = state.manifest.filter((tweet) => tweet.has_video).length;
     const imported = state.manifest.filter((tweet) => tweet.source_kind === "managed").length;
+    const avatarCandidates = activeAccountProfile ? sourceCandidates(activeAccountProfile, "avatar") : [];
+    const avatarSrc = avatarCandidates[0];
+    const accountSummary = activeAccountProfile ? `
+      <section class="account-summary-card">
+        <div class="account-summary-header">
+          ${avatarSrc ? `<img class="account-summary-avatar" src="${escapeHtml(avatarSrc)}" alt="" data-fallbacks="${encodedFallbacks(avatarCandidates)}">` : '<div class="account-summary-avatar account-summary-avatar--placeholder"></div>'}
+          <div class="account-summary-copy">
+            <div class="account-summary-name-row">
+              <strong>${escapeHtml(activeAccountProfile.display_name || activeAccountProfile.username || state.account)}</strong>
+              ${activeAccountProfile.verified ? '<span class="verified-badge">Verified</span>' : ""}
+            </div>
+            <div class="account-summary-handle">@${escapeHtml(activeAccountProfile.username || state.account)}</div>
+          </div>
+        </div>
+        ${activeAccountProfile.description ? `<p class="account-summary-description">${escapeHtml(activeAccountProfile.description)}</p>` : ""}
+      </section>
+    ` : "";
 
     summary.innerHTML = `
+      ${accountSummary}
       <div class="summary-card">
         <span class="summary-value">${total}</span>
         <span class="summary-label">Loaded</span>
@@ -647,6 +668,8 @@ const ArchiveViewer = (() => {
         <span class="summary-label">Imported</span>
       </div>
     `;
+
+    activateFallbacks(summary);
   }
 
   function renderFilterChips() {
@@ -1239,6 +1262,7 @@ const ArchiveViewer = (() => {
   function applyFilters() {
     const filtered = filteredTweets();
     const view = renderList(filtered);
+    renderArchiveSummary();
     renderFilterChips();
     renderResultsMeta(view);
     renderPaginationControls(view);

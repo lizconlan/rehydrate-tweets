@@ -81,6 +81,7 @@ def summarize_tweet(tweet, source_path):
             "id": str(author.get("id", "")),
             "username": author.get("username", ""),
             "display_name": author.get("display_name", author.get("username", "")),
+            "description": author.get("description", ""),
             "verified": bool(author.get("verified", False)),
             "profile_image_s3": author.get("profile_image_s3", ""),
             "profile_image_url": author.get("profile_image_url", ""),
